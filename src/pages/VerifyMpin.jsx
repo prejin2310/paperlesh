@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { FiHash, FiShield, FiArrowRight, FiChevronLeft } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import { FiHash, FiShield, FiLock, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { motion } from 'framer-motion';
 
 const VerifyMpin = () => {
     const navigate = useNavigate();
-    const { currentUser, verifySession } = useAuth();
+    const { currentUser, verifySession, logout } = useAuth();
     
     const [mpin, setMpin] = useState('');
     const [error, setError] = useState('');
@@ -43,6 +44,7 @@ const VerifyMpin = () => {
                     navigate('/dashboard');
                 } else {
                      setError('Incorrect MPIN. Please try again.');
+                     setMpin(''); // Clear field on error
                 }
             } else {
                 setError('User data not found.');
@@ -56,59 +58,93 @@ const VerifyMpin = () => {
         }
     };
 
+    const handleLogout = async () => {
+        try {
+            await logout();
+            navigate('/login');
+        } catch (error) {
+            console.error("Failed to log out", error);
+        }
+    };
+
     if (!currentUser) return null;
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900 font-sans p-4">
-            <div className="w-full max-w-sm bg-white rounded-[2rem] shadow-xl overflow-hidden p-8 relative">
-                
-                {/* Top Navigation */}
-                 <div className="flex justify-between items-center mb-8">
-                    <Link to="/login" className="p-2 -ml-2 rounded-full hover:bg-gray-50 transition-colors">
-                        <FiChevronLeft className="w-6 h-6 text-gray-800" />
-                    </Link>
-                </div>
+        <div className="min-h-screen bg-white text-gray-900 font-sans p-6 md:p-12 flex flex-col relative overflow-hidden">
+             
+             {/* Background Blooms */}
+            <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }}
+                className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-100 rounded-full blur-[100px] opacity-40 pointer-events-none"
+            />
+            <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.5 }}
+                className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-100 rounded-full blur-[100px] opacity-40 pointer-events-none"
+            />
 
-                {/* Header */}
-                <div className="mb-10">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Security Check</h1>
-                    <p className="text-gray-500 text-sm font-medium">Please enter your MPIN to continue.</p>
-                </div>
-
-                {error && (
-                     <div className="mb-6 p-4 bg-red-50 text-red-500 text-sm font-medium rounded-2xl text-center">
-                        {error}
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+                className="flex-1 flex items-center justify-center relative z-10"
+            >
+                <div className="w-full max-w-md space-y-8">
+                    
+                    <div className="text-center space-y-4">
+                        <div className="w-16 h-16 bg-black rounded-3xl mx-auto flex items-center justify-center text-white text-2xl shadow-xl">
+                            <FiLock />
+                        </div>
+                        <h1 className="text-4xl font-black tracking-tight text-gray-900">
+                             Welcome Back
+                        </h1>
+                        <p className="text-gray-500 font-medium text-lg leading-relaxed max-w-xs mx-auto">
+                            Enter your security PIN to access your journal.
+                        </p>
                     </div>
-                )}
 
-                <form onSubmit={handleVerifyMpin} className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">MPIN</label>
+                    {error && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="p-4 bg-red-50 text-red-600 font-bold text-sm rounded-2xl text-center">
+                            {error}
+                        </motion.div>
+                    )}
+
+                    <form onSubmit={handleVerifyMpin} className="space-y-6">
                         <div className="relative group">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
+                                <FiHash size={20} />
+                            </div>
                             <input
-                                type="password"
+                                type="tel"
                                 inputMode="numeric"
-                                maxLength={4}
+                                maxLength="4"
                                 required
                                 value={mpin}
-                                onChange={(e) => setMpin(e.target.value)}
-                                className="block w-full px-5 py-3 bg-gray-50 border-none rounded-2xl text-gray-900 text-lg font-bold tracking-[0.5em] text-center placeholder-gray-400 focus:ring-2 focus:ring-gray-900/5 transition-all outline-none"
-                                placeholder="••••"
+                                onChange={(e) => setMpin(e.target.value.replace(/\D/g, ''))}
+                                className="block w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-2xl text-base font-bold text-gray-900 placeholder-gray-400 transition-all outline-none"
+                                placeholder="Enter 4-digit PIN"
                             />
                         </div>
-                    </div>
 
-                    <div className="pt-2">
                         <button
                             type="submit"
                             disabled={loading}
-                             className="w-full py-3 px-6 bg-black text-white rounded-full text-sm font-bold tracking-wide hover:bg-gray-800 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-gray-900/20"
+                            className="w-full py-4 px-6 bg-black text-white text-lg font-bold rounded-2xl shadow-xl shadow-gray-200 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
                         >
-                            {loading ? 'Verifying...' : 'Verify & Enter'}
+                            {loading ? 'Verifying...' : 'Unlock Journal'}
+                        </button>
+                    </form>
+
+                    <div className="text-center">
+                         <button 
+                            onClick={handleLogout}
+                            className="inline-flex items-center text-sm font-bold text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                        >
+                            <FiLogOut className="mr-2" />
+                            Log out & switch account
                         </button>
                     </div>
-                </form>
-            </div>
+                </div>
+            </motion.div>
         </div>
     );
 };

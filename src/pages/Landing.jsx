@@ -1,223 +1,402 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { FiActivity, FiBook, FiCalendar, FiDownload } from 'react-icons/fi';
-import { RiMentalHealthLine } from 'react-icons/ri';
+import { Link } from 'react-router-dom';
+import { 
+  FiDownload, FiLogIn, FiUserPlus, FiSmartphone, FiWifi, 
+  FiZap, FiCheck, FiArrowRight, FiSun, FiMoon
+} from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Landing = () => {
-  const navigate = useNavigate();
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isInstallable, setIsInstallable] = useState(false);
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [isInstallable, setIsInstallable] = useState(false);
+    const [activeScreenshot, setActiveScreenshot] = useState(0);
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setIsInstallable(true);
+    // Initial Layout Effect to enforce light mode by default, or read preference
+    useEffect(() => {
+        // Check local storage or default to false (light)
+        const storedTheme = localStorage.getItem('theme');
+        if (storedTheme === 'dark') {
+            setIsDarkMode(true);
+            document.documentElement.classList.add('dark');
+        } else {
+            setIsDarkMode(false);
+            document.documentElement.classList.remove('dark');
+        }
+    }, []);
+
+    const toggleTheme = () => {
+        setIsDarkMode((prev) => {
+            const newMode = !prev;
+            if (newMode) {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            }
+            return newMode;
+        });
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    useEffect(() => {
+        const handleBeforeInstallPrompt = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            setIsInstallable(true);
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    }, []);
 
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    const handleInstallClick = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setDeferredPrompt(null);
+            setIsInstallable(false);
+        }
     };
-  }, []);
 
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
-    setDeferredPrompt(null);
-    setIsInstallable(false);
-  };
+    // Auto-rotate phone content
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setActiveScreenshot((prev) => (prev + 1) % 3);
+        }, 3000);
+        return () => clearInterval(interval);
+    }, []);
 
-  return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans selection:bg-brand-500/30">
-      
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-40 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
-          <div className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-400">
-            Paperlesh
-          </div>
-          <div className="flex items-center gap-6">
-             <Link to="/login" className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
-               Login
-             </Link>
-             <Link 
-               to="/register" 
-               className="hidden sm:block px-4 py-2 bg-brand-600 hover:bg-brand-700 !text-white text-sm font-semibold rounded-lg transition-all shadow-lg shadow-brand-500/20"
-             >
-               Get Started
-             </Link>
-          </div>
-        </div>
-      </nav>
+    const screenshots = [
+        { title: "Weekly Insights", color: "bg-yellow-100 text-yellow-900", darkColor: "dark:bg-yellow-900/50 dark:text-yellow-100", emoji: "📊", text: "Track trends." },
+        { title: "Mood Tracking", color: "bg-blue-100 text-blue-900", darkColor: "dark:bg-blue-900/50 dark:text-blue-100", emoji: "🙂", text: "Log feelings." },
+        { title: "Habit Streaks", color: "bg-green-100 text-green-900", darkColor: "dark:bg-green-900/50 dark:text-green-100", emoji: "🔥", text: "Build discipline." }
+    ];
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-16 px-6 lg:pt-48 lg:pb-32 flex flex-col items-center text-center space-y-8 max-w-5xl mx-auto relative overflow-hidden">
-        {/* Background Gradients */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-brand-500/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
-        <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
+    // Floating animation variants
+    const floatingVariant = {
+        animate: {
+            y: [0, -20, 0],
+            transition: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+        }
+    };
 
-        <div className="space-y-6 max-w-3xl mx-auto">
-          <div className="inline-flex items-center px-3 py-1 rounded-full border border-brand-200 dark:border-brand-800 bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 text-xs font-semibold tracking-wide uppercase mb-4">
-            New way to journal
-          </div>
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-tight">
-            Your life, <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-400">simplified.</span>
-          </h1>
-          <p className="text-lg md:text-2xl text-gray-600 dark:text-gray-400 font-light max-w-2xl mx-auto leading-relaxed">
-            Track your habits, mood, and memories in seconds. Visualize your year with beautiful, data-driven insights.
-          </p>
-        </div>
+    const floatingVariantReverse = {
+        animate: {
+            y: [0, 20, 0],
+            transition: { duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }
+        }
+    };
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 pt-8 w-full sm:w-auto">
-          <Link 
-            to="/register" 
-            className="w-full sm:w-auto px-8 py-4 bg-brand-600 hover:bg-brand-700 !text-white font-bold text-lg rounded-2xl shadow-xl shadow-brand-500/30 transition-all hover:scale-[1.02] active:scale-[0.98] text-center"
-          >
-            Start Journaling Free
-          </Link>
-          <Link 
-            to="/login" 
-            className="w-full sm:w-auto px-8 py-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-semibold text-lg rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] text-center"
-          >
-            Log In
-          </Link>
-        </div>
-        
-        {/* Simple by design (Moved from bottom) */}
-        <div className="mt-24 w-full text-left">
-          <div className="grid md:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900 dark:text-white">Simple by design</h2>
-              <div className="space-y-8">
-                <Step 
-                  number="1" 
-                  title="Log in seconds" 
-                  desc="Tap to track mood, rate your day, and log habits. No typing required."
+    return (
+        <div className={`min-h-screen font-sans selection:bg-indigo-500 selection:text-white overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
+            
+            {/* Navbar */}
+            <nav className={`fixed top-0 w-full z-50 backdrop-blur-xl border-b transition-colors duration-300 ${isDarkMode ? 'bg-slate-950/60 border-slate-800' : 'bg-white/60 border-white/20'}`}>
+                <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                         <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/20">M</div>
+                         <span className="text-xl font-bold tracking-tight">MyJournle</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <button 
+                            onClick={toggleTheme}
+                            className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-200 text-slate-600'}`}
+                        >
+                            {isDarkMode ? <FiSun size={20} /> : <FiMoon size={20} />}
+                        </button>
+                        <Link to="/login" className={`text-sm font-bold transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-500 hover:text-black'}`}>Log In</Link>
+                        <Link to="/register" className="hidden sm:inline-flex px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-full hover:bg-indigo-700 hover:scale-105 hover:shadow-xl hover:shadow-indigo-500/20 transition-all">
+                            Start Free
+                        </Link>
+                    </div>
+                </div>
+            </nav>
+
+            {/* Hero Section */}
+            <main className="pt-32 pb-20 px-6 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 lg:gap-24 relative z-10">
+                
+                {/* Background Blobs - Animated */}
+                <motion.div 
+                    variants={floatingVariant}
+                    animate="animate"
+                    className="absolute top-20 left-10 -z-10 w-64 h-64 bg-purple-300/30 rounded-full blur-3xl mix-blend-multiply dark:mix-blend-screen dark:bg-purple-900/20" 
                 />
-                <Step 
-                  number="2" 
-                  title="Reflect monthly" 
-                  desc="Review your progress with auto-generated summaries and insights."
+                <motion.div 
+                    variants={floatingVariantReverse}
+                    animate="animate"
+                    className="absolute bottom-20 right-1/3 -z-10 w-96 h-96 bg-blue-300/30 rounded-full blur-3xl mix-blend-multiply dark:mix-blend-screen dark:bg-blue-900/20" 
                 />
-                <Step 
-                  number="3" 
-                  title="See your year" 
-                  desc="Watch your life visualize into a colorful yearly heatmap."
-                />
-              </div>
-            </div>
-            <div className="bg-gradient-to-br from-brand-100 to-blue-50 dark:from-brand-900/30 dark:to-blue-900/10 rounded-3xl p-8 h-[400px] flex items-center justify-center relative overflow-hidden shadow-2xl border border-brand-100 dark:border-brand-900/20">
-               <div className="absolute inset-0 grid grid-cols-6 grid-rows-6 gap-2 p-4 opacity-50">
-                  {[...Array(36)].map((_, i) => (
-                    <div key={i} className={`rounded-md ${Math.random() > 0.5 ? 'bg-brand-400/30' : 'bg-transparent'}`} />
-                  ))}
-               </div>
-               <div className="text-center relative z-10">
-                 <p className="text-brand-900 dark:text-brand-100 font-bold text-2xl">Your Year in Review</p>
-                 <p className="text-brand-700 dark:text-brand-300 mt-2">Coming to life as you log.</p>
-               </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Feature Grid */}
-      <section className="py-24 bg-gray-50 dark:bg-gray-900/50">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything you need</h2>
-            <p className="text-gray-600 dark:text-gray-400">Designed to be the only journaling app you'll ever need, without the clutter.</p>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <FeatureCard 
-              icon={<FiBook className="w-6 h-6 text-brand-600" />} 
-              title="Micro Journal" 
-              desc="Capture your day in one meaningful line. No pressure to write pages." 
-            />
-            <FeatureCard 
-              icon={<RiMentalHealthLine className="w-6 h-6 text-brand-600" />} 
-              title="Mood Tracker" 
-              desc="Identify patterns in your emotional well-being over time." 
-            />
-            <FeatureCard 
-              icon={<FiActivity className="w-6 h-6 text-brand-600" />} 
-              title="Habit Builder" 
-              desc="Build streaks and form lasting positive habits easily." 
-            />
-            <FeatureCard 
-              icon={<FiCalendar className="w-6 h-6 text-brand-600" />} 
-              title="Year in Pixels" 
-              desc="See your entire year at a glance with beautiful heatmaps." 
-            />
-          </div>
-        </div>
-      </section>
+                {/* Left Text */}
+                <div className="flex-1 text-center lg:text-left space-y-8">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}
+                        className={`inline-flex items-center gap-2 px-3 py-1 border rounded-full shadow-sm ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}
+                    >
+                        <span className="flex h-2 w-2 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                        </span>
+                        <span className={`text-xs font-bold uppercase tracking-wide ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>PWA Enabled</span>
+                    </motion.div>
 
-      {/* PWA Install Banner */}
-      {isInstallable && (
-        <div className="fixed bottom-6 left-6 right-6 md:left-auto md:right-6 md:w-96 p-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border border-brand-100 dark:border-brand-900 rounded-2xl shadow-2xl z-50 animate-in slide-in-from-bottom-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-brand-100 dark:bg-brand-900/50 rounded-xl">
-                <FiDownload className="w-5 h-5 text-brand-600 dark:text-brand-400" />
-              </div>
-              <div>
-                <p className="font-bold text-sm text-gray-900 dark:text-white">Install App</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Add to home screen</p>
-              </div>
-            </div>
-            <button 
-              onClick={handleInstallClick}
-              className="px-4 py-2 bg-brand-600 hover:bg-brand-700 !text-white text-sm font-semibold rounded-lg transition-colors"
-            >
-              Install
-            </button>
-          </div>
-        </div>
-      )}
+                    <motion.h1 
+                        initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1, type: "spring" }}
+                        className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-tighter leading-[1.1]"
+                    >
+                        Journaling <br className="hidden lg:block"/>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-gradient-x">
+                            simplified.
+                        </span>
+                    </motion.h1>
 
-      {/* Footer */}
-      <footer className="py-12 border-t border-gray-100 dark:border-gray-800/50 bg-white dark:bg-gray-950">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-           <div className="text-2xl font-bold tracking-tight text-gray-400 dark:text-gray-600">
-            Paperlesh
-          </div>
-          <p className="font-medium text-gray-500 dark:text-gray-500 text-sm">
-            &copy; {new Date().getFullYear()} Paperlesh. All rights reserved.
-          </p>
+                    <motion.p 
+                        initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2 }}
+                        className={`text-xl font-medium max-w-xl mx-auto lg:mx-0 leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}
+                    >
+                        Track your habits, mood, and memories in seconds. Visualize your year with beautiful, data-driven insights.
+                    </motion.p>
+
+                    {/* App / PWA Highlighting */}
+                    <motion.div 
+                         initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.3 }}
+                         className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start"
+                    >
+                        {isInstallable ? (
+                            <button 
+                                onClick={handleInstallClick}
+                                className="group relative w-full sm:w-auto px-8 py-4 bg-slate-900 dark:bg-white dark:text-black text-white rounded-2xl font-bold text-lg hover:translate-y-[-2px] hover:shadow-2xl hover:shadow-indigo-500/30 transition-all flex items-center justify-center gap-3 overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10"></div>
+                                <FiDownload className="group-hover:animate-bounce" />
+                                Install App
+                            </button>
+                        ) : (
+                             <Link 
+                                to="/register"
+                                className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:translate-y-[-2px] hover:shadow-xl hover:shadow-indigo-500/20 transition-all flex items-center justify-center gap-3"
+                            >
+                                Get Started Free
+                                <FiArrowRight />
+                            </Link>
+                        )}
+                         <div className="flex flex-col items-start text-xs font-semibold pl-2">
+                             <span className={`flex items-center gap-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                                <FiSmartphone size={14} /> 
+                                Works offline
+                             </span>
+                             <span className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>No App Store needed.</span>
+                         </div>
+                    </motion.div>
+                </div>
+
+                {/* Right Visual - Interactive Phone */}
+                <motion.div 
+                    initial={{ opacity: 0, x: 50, rotateY: 15 }} 
+                    animate={{ opacity: 1, x: 0, rotateY: 12 }} 
+                    whileHover={{ rotateY: 0, rotateZ: 0, scale: 1.02 }}
+                    transition={{ duration: 0.8, type: "spring" }}
+                    className="flex-1 w-full max-w-[400px] lg:max-w-md perspective-1000"
+                >
+                    <div className={`relative w-full aspect-[9/19] rounded-[3.5rem] p-4 shadow-2xl border-8 ring-1 transition-all duration-300 ${isDarkMode ? 'bg-slate-800 border-slate-800 ring-slate-700 shadow-slate-900/50' : 'bg-slate-900 border-slate-900 ring-slate-900/10 shadow-xl'}`}>
+                         
+                         {/* Dynamic Screen Content */}
+                         <div className={`w-full h-full rounded-[2.5rem] overflow-hidden relative flex flex-col transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-[#FDFBF9] text-slate-900'}`}>
+                            {/* StatusBar */}
+                            <div className="h-10 w-full flex justify-between items-end px-6 pb-2 text-xs font-bold font-mono opacity-50">
+                                <span>9:41</span>
+                                <div className="flex gap-1">
+                                    <div className={`w-4 h-4 rounded-full text-[8px] flex items-center justify-center ${isDarkMode ? 'bg-white text-black' : 'bg-black text-white'}`}><FiWifi /></div>
+                                    <div className={`w-4 h-4 rounded-full text-[8px] flex items-center justify-center ${isDarkMode ? 'bg-white text-black' : 'bg-black text-white'}`}><FiZap /></div>
+                                </div>
+                            </div>
+                            
+                            {/* Animated Content */}
+                            <div className="mt-8 px-6">
+                                <h3 className="text-3xl font-black mb-6">Hello, You.</h3>
+                                <div className="space-y-4">
+                                     <AnimatePresence mode='wait'>
+                                        <motion.div 
+                                            key={activeScreenshot}
+                                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                                            transition={{ duration: 0.4 }}
+                                            className={`aspect-square rounded-3xl flex flex-col items-center justify-center gap-4 text-center p-6 shadow-sm transition-colors duration-300 ${isDarkMode ? screenshots[activeScreenshot].darkColor : screenshots[activeScreenshot].color}`}
+                                        >
+                                            <div className="text-6xl filter drop-shadow-md">{screenshots[activeScreenshot].emoji}</div>
+                                            <div>
+                                                <div className="text-xl font-bold">{screenshots[activeScreenshot].title}</div>
+                                                <div className="text-sm font-medium opacity-80">{screenshots[activeScreenshot].text}</div>
+                                            </div>
+                                        </motion.div>
+                                     </AnimatePresence>
+                                     
+                                     {/* Mock List */}
+                                     { [1,2].map(i => (
+                                         <div key={i} className={`h-16 w-full rounded-2xl border shadow-sm flex items-center px-4 gap-4 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
+                                            <div className={`w-10 h-10 rounded-full animate-pulse ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}></div>
+                                            <div className="flex-1 space-y-2">
+                                                <div className={`w-24 h-2 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}></div>
+                                                <div className={`w-16 h-2 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-50'}`}></div>
+                                            </div>
+                                         </div>
+                                     ))}
+                                </div>
+                            </div>
+
+                            {/* Navbar Mock */}
+                            <div className={`absolute bottom-0 left-0 right-0 h-20 border-t flex items-center justify-around text-2xl ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-600' : 'bg-white border-slate-50 text-slate-300'}`}>
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-indigo-600 text-white' : 'bg-black text-white'}`}><FiCheck /></div>
+                            </div>
+                         </div>
+                         
+                         {/* Reflection/Sheen */}
+                         <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none rounded-[3.5rem] z-20"></div>
+                    </div>
+                </motion.div>
+            </main>
+
+            {/* PWA Banner Section - "The Real App" vibe */}
+            <section className={`py-20 px-6 overflow-hidden relative transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 text-white' : 'bg-black text-white'}`}>
+                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                 
+                 <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-12 relative z-10">
+                    <div className="flex-1 space-y-6">
+                        <div className="inline-block px-3 py-1 rounded-full border border-white/20 text-xs font-bold tracking-widest uppercase bg-white/5 backdrop-blur-sm">
+                            Native Experience
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-bold leading-tight">
+                            "It's like a real app, <br/>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">but instant.</span>"
+                        </h2>
+                        <ul className="space-y-4 font-medium text-lg text-slate-300">
+                            {[
+                                "Installs to your home screen",
+                                "No 100MB downloads",
+                                "Works even when offline"
+                            ].map((item, idx) => (
+                                <motion.li 
+                                    key={idx}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    whileInView={{ opacity: 1, x: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: idx * 0.2 }}
+                                    className="flex items-center gap-3"
+                                >
+                                    <div className="p-1 bg-green-500 rounded-full"><FiCheck size={14} className="text-black"/></div>
+                                    {item}
+                                </motion.li>
+                            ))}
+                        </ul>
+                    </div>
+                    {/* Visual representation of app icon on grid */}
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.5 }}
+                        className="flex-1 flex justify-center"
+                    >
+                        <div className="grid grid-cols-3 gap-6 p-8 bg-white/5 rounded-[3rem] backdrop-blur-md border border-white/10 max-w-sm rotate-3 hover:rotate-0 transition-all duration-500">
+                             {[...Array(8)].map((_, i) => (
+                                 <div key={i} className="w-16 h-16 bg-white/5 rounded-2xl"></div>
+                             ))}
+                             {/* The App Icon */}
+                             <motion.div 
+                                animate={{ scale: [1, 1.1, 1] }}
+                                transition={{ repeat: Infinity, duration: 2 }}
+                                className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-lg shadow-indigo-500/50 flex items-center justify-center text-white text-2xl font-bold cursor-pointer"
+                             >
+                                 M
+                             </motion.div>
+                        </div>
+                    </motion.div>
+                 </div>
+            </section>
+
+             {/* Bento Grid Features */}
+             <section className="py-32 px-6 max-w-7xl mx-auto">
+                 <div className="text-center mb-20">
+                     <h2 className="text-4xl font-bold">Simple by design.</h2>
+                 </div>
+                 
+                 <div className="grid grid-cols-1 md:grid-cols-3 md:grid-rows-2 gap-6 h-auto md:h-[600px]">
+                     {/* Large Left */}
+                     <motion.div 
+                         initial={{ opacity: 0, y: 50 }}
+                         whileInView={{ opacity: 1, y: 0 }}
+                         viewport={{ once: true }}
+                         transition={{ duration: 0.5 }}
+                         className={`md:row-span-2 rounded-[2.5rem] p-10 border shadow-xl flex flex-col justify-between overflow-hidden relative group transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 shadow-none' : 'bg-white border-slate-100 shadow-slate-200/50'}`}
+                    >
+                         <div className="relative z-10">
+                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mb-6 ${isDarkMode ? 'bg-orange-900/50 text-orange-200' : 'bg-orange-100 text-orange-600'}`}><FiSun /></div>
+                            <h3 className="text-2xl font-bold mb-2">Log in Seconds</h3>
+                            <p className="opacity-70 leading-relaxed">Tap to track mood, rate your day, and log habits. It's the fastest way to keep a diary.</p>
+                         </div>
+                         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-orange-500/10 rounded-full group-hover:scale-150 transition-transform duration-700 ease-in-out"></div>
+                     </motion.div>
+
+                     {/* Top Right */}
+                     <motion.div 
+                         initial={{ opacity: 0, y: 50 }}
+                         whileInView={{ opacity: 1, y: 0 }}
+                         viewport={{ once: true }}
+                         transition={{ duration: 0.5, delay: 0.1 }}
+                         className={`md:col-span-2 rounded-[2.5rem] p-10 flex flex-col md:flex-row items-center gap-10 overflow-hidden relative border transition-colors duration-300 ${isDarkMode ? 'bg-slate-800/50 border-slate-700 text-white' : 'bg-slate-900 text-white border-transparent'}`}
+                    >
+                         <div className="flex-1 relative z-10">
+                            <h3 className="text-2xl font-bold mb-2">Reflect Monthly</h3>
+                            <p className="opacity-70 leading-relaxed">Review your progress with auto-generated summaries and insights.</p>
+                         </div>
+                         <div className="flex-1 flex gap-2 justify-end">
+                            <div className="w-12 h-32 bg-white/10 rounded-full animate-pulse"></div>
+                            <div className="w-12 h-20 bg-white/20 rounded-full"></div>
+                            <div className="w-12 h-40 bg-gradient-to-t from-indigo-500 to-purple-500 rounded-full shadow-lg shadow-indigo-500/50"></div>
+                         </div>
+                     </motion.div>
+
+                     {/* Bottom Mid */}
+                     <motion.div 
+                         initial={{ opacity: 0, y: 50 }}
+                         whileInView={{ opacity: 1, y: 0 }}
+                         viewport={{ once: true }}
+                         transition={{ duration: 0.5, delay: 0.2 }}
+                         className={`rounded-[2.5rem] p-10 border flex flex-col justify-center text-center items-center transition-colors duration-300 ${isDarkMode ? 'bg-blue-900/20 border-blue-900/50' : 'bg-blue-50 border-blue-100'}`}
+                    >
+                         <div className="text-4xl mb-4">🧘</div>
+                         <h3 className={`text-xl font-bold ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Mindfulness</h3>
+                         <p className={`text-sm opacity-80 ${isDarkMode ? 'text-blue-200' : 'text-blue-700'}`}>Built-in breathing exercises.</p>
+                     </motion.div>
+
+                     {/* Bottom Right */}
+                     <motion.div 
+                         initial={{ opacity: 0, y: 50 }}
+                         whileInView={{ opacity: 1, y: 0 }}
+                         viewport={{ once: true }}
+                         transition={{ duration: 0.5, delay: 0.3 }}
+                         className={`rounded-[2.5rem] p-10 border shadow-xl flex flex-col justify-center relative overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800 shadow-none' : 'bg-white border-slate-100 shadow-slate-200/50'}`}
+                    >
+                         <div className="relative z-10">
+                             <h3 className="text-xl font-bold mb-1">See your year</h3>
+                             <p className="text-sm opacity-70">Visualize your life in pixels.</p>
+                         </div>
+                         <div className={`absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l z-20 ${isDarkMode ? 'from-slate-900 via-slate-900/80' : 'from-white via-white/80'} to-transparent`}></div>
+                         <div className="absolute inset-0 opacity-20 flex flex-wrap gap-1 p-4 -z-0">
+                             {[...Array(100)].map((_, i) => (
+                                 <div key={i} className={`w-3 h-3 rounded-sm ${Math.random() > 0.5 ? 'bg-green-500' : (isDarkMode ? 'bg-slate-700' : 'bg-slate-200')}`}></div>
+                             ))}
+                         </div>
+                     </motion.div>
+                 </div>
+             </section>
+
+             <footer className="py-12 text-center opacity-60 text-sm font-semibold">
+                 © 2026 MyJournle. Your life, simplified.
+             </footer>
         </div>
-      </footer>
-    </div>
-  );
+    );
 };
-
-const FeatureCard = ({ icon, title, desc }) => (
-  <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 hover:border-brand-200 dark:hover:border-brand-800 hover:shadow-md transition-all flex flex-col items-start text-left space-y-4 group">
-    <div className="p-3 bg-brand-50 dark:bg-brand-900/30 rounded-xl group-hover:bg-brand-100 dark:group-hover:bg-brand-900/50 transition-colors">
-      {icon}
-    </div>
-    <div>
-      <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg mb-2">{title}</h3>
-      <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
-    </div>
-  </div>
-);
-
-const Step = ({ number, title, desc }) => (
-  <div className="flex gap-5 relative group">
-    <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-white dark:bg-gray-900 border-2 border-brand-100 dark:border-brand-900 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold z-10 shadow-sm group-hover:scale-110 group-hover:border-brand-500 transition-all duration-300">
-      {number}
-    </div>
-    <div className="pt-2">
-      <h3 className="font-bold text-lg mb-1 text-gray-900 dark:text-white">{title}</h3>
-      <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">{desc}</p>
-    </div>
-  </div>
-);
 
 export default Landing;

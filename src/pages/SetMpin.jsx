@@ -4,6 +4,7 @@ import { FiHash, FiShield, FiArrowRight, FiLock, FiChevronLeft, FiEye, FiEyeOff 
 import { useAuth } from '../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { motion } from 'framer-motion';
 
 const SetMpin = () => {
     const navigate = useNavigate();
@@ -50,14 +51,11 @@ const SetMpin = () => {
         }
     };
 
-    const handleSetMpin = async (e) => {
+     const handleSetMpin = async (e) => {
         e.preventDefault();
         
         if (mpin.length !== 4) {
             return setError('MPIN must be exactly 4 digits');
-        }
-        if (!/^\d*$/.test(mpin)) {
-             return setError('MPIN must only contain numbers');
         }
         if (mpin !== confirmMpin) {
             return setError('MPINs do not match');
@@ -66,136 +64,142 @@ const SetMpin = () => {
         try {
             setError('');
             setLoading(true);
-
-            // Update user profile in Firestore
+            
+            // Save MPIN to Firestore
             const userRef = doc(db, 'users', currentUser.uid);
             await updateDoc(userRef, {
                 mpin: mpin,
-                mpinSetAt: new Date().toISOString()
+                hasMpin: true
             });
 
-            // Redirect to dashboard
+            // Mark session as verified
             verifySession();
+
             navigate('/dashboard');
         } catch (err) {
             console.error(err);
-            setError('Failed to set MPIN. Please try again.');
+            setError('Failed to save MPIN.');
         } finally {
             setLoading(false);
         }
     };
 
-    if (!currentUser) return null;
+    if (step === 'loading') return (
+        <div className="flex justify-center items-center h-screen bg-white">
+            <div className="w-8 h-8 bg-black rounded-full animate-ping"></div>
+        </div>
+    );
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900 font-sans p-4">
-            
-            <div className="w-full max-w-sm bg-white rounded-[2rem] shadow-xl overflow-hidden p-8 relative">
-                
-                 {/* Top Navigation */}
-                <div className="flex justify-between items-center mb-8">
-                    <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-gray-50 transition-colors">
-                        <FiChevronLeft className="w-6 h-6 text-gray-800" />
-                    </button>
-                     <button onClick={() => navigate('/dashboard')} className="text-xs font-semibold text-gray-400 hover:text-gray-900 transition-colors uppercase tracking-wider">
-                        Skip Here
-                    </button>
-                </div>
+         <div className="min-h-screen bg-white text-gray-900 font-sans p-6 md:p-12 flex flex-col relative overflow-hidden">
+             
+             {/* Background Blooms */}
+            <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }}
+                className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-green-100 rounded-full blur-[100px] opacity-40 pointer-events-none"
+            />
 
-                {/* Header */}
-                <div className="mb-10">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                        {step === 'verify' ? 'Password' : 'Set MPIN'}
-                    </h1>
-                     <p className="text-gray-500 text-sm font-medium">
-                        {step === 'verify' ? 'Verify your identity to proceed.' : 'Secure your account with 4-digit PIN.'}
-                    </p>
-                </div>
-
-                {error && (
-                     <div className="mb-6 p-4 bg-red-50 text-red-500 text-sm font-medium rounded-2xl">
-                        {error}
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+                className="flex-1 flex items-center justify-center relative z-10"
+            >
+                <div className="w-full max-w-md space-y-8">
+                    
+                    <div className="text-center space-y-4">
+                        <div className="w-16 h-16 bg-black rounded-3xl mx-auto flex items-center justify-center text-white text-2xl shadow-xl">
+                            <FiShield />
+                        </div>
+                        <h1 className="text-4xl font-black tracking-tight text-gray-900">
+                             {step === 'verify' ? 'Security Check' : 'Create PIN'}
+                        </h1>
+                        <p className="text-gray-500 font-medium text-lg leading-relaxed max-w-xs mx-auto">
+                            {step === 'verify' 
+                                ? 'Please confirm your password to set a new security PIN.' 
+                                : 'Set a 4-digit PIN to secure your journal entries.'}
+                        </p>
                     </div>
-                )}
 
-                {step === 'verify' ? (
-                    <form onSubmit={handleVerify} className="space-y-6">
-                        <div className="space-y-1 relative">
-                            <input
-                                type={showPassword ? "text" : "password"}
-                                required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="block w-full px-5 py-3 bg-gray-50 border-none rounded-2xl text-gray-900 text-sm font-medium placeholder-gray-400 focus:ring-2 focus:ring-gray-900/5 transition-all outline-none"
-                                placeholder="Enter your password"
-                            />
-                            <button 
-                                type="button" 
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                    {error && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="p-4 bg-red-50 text-red-600 font-bold text-sm rounded-2xl text-center">
+                            {error}
+                        </motion.div>
+                    )}
+
+                    {step === 'verify' ? (
+                        <form onSubmit={handleVerify} className="space-y-6">
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
+                                    <FiLock size={20} />
+                                </div>
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    required
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="block w-full pl-12 pr-12 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-2xl text-base font-bold text-gray-900 placeholder-gray-400 transition-all outline-none"
+                                    placeholder="Enter current password"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-black transition-colors cursor-pointer"
+                                >
+                                    {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+                                </button>
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full py-4 px-6 bg-black text-white text-lg font-bold rounded-2xl shadow-xl shadow-gray-200 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
                             >
-                                {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+                                {loading ? 'Verifying...' : 'Verify Identity'}
                             </button>
-                        </div>
-                        
-                        <button
-                            type="submit"
-                            disabled={loading}
-                             className="w-full py-3 px-6 bg-black text-white rounded-full text-sm font-bold tracking-wide hover:bg-gray-800 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-gray-900/20"
-                        >
-                            {loading ? 'Verifying...' : 'Continue'}
-                        </button>
-                    </form>
-                ) : (
-                    <form onSubmit={handleSetMpin} className="space-y-6">
-                        <div className="space-y-4">
-                             <div className="space-y-1">
-                                <label className="text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">New MPIN</label>
-                                <input
-                                    type="password"
-                                    inputMode="numeric"
-                                    maxLength={4}
-                                    required
-                                    value={mpin}
-                                    onChange={(e) => setMpin(e.target.value)}
-                                    className="block w-full px-5 py-3 bg-gray-50 border-none rounded-2xl text-gray-900 text-lg font-bold tracking-[0.5em] text-center placeholder-gray-400 focus:ring-2 focus:ring-gray-900/5 transition-all outline-none"
-                                    placeholder="••••"
-                                />
+                        </form>
+                    ) : (
+                         <form onSubmit={handleSetMpin} className="space-y-6">
+                            <div className="space-y-4">
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
+                                        <FiHash size={20} />
+                                    </div>
+                                    <input
+                                        type="tel"
+                                        maxLength="4"
+                                        required
+                                        value={mpin}
+                                        onChange={(e) => setMpin(e.target.value.replace(/\D/g, ''))}
+                                        className="block w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-2xl text-base font-bold text-gray-900 placeholder-gray-400 transition-all outline-none"
+                                        placeholder="Enter 4-digit PIN"
+                                    />
+                                </div>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
+                                        <FiShield size={20} />
+                                    </div>
+                                    <input
+                                        type="tel"
+                                        maxLength="4"
+                                        required
+                                        value={confirmMpin}
+                                        onChange={(e) => setConfirmMpin(e.target.value.replace(/\D/g, ''))}
+                                        className="block w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-2xl text-base font-bold text-gray-900 placeholder-gray-400 transition-all outline-none"
+                                        placeholder="Confirm 4-digit PIN"
+                                    />
+                                </div>
                             </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">Confirm MPIN</label>
-                                <input
-                                    type="password"
-                                    inputMode="numeric"
-                                    maxLength={4}
-                                    required
-                                    value={confirmMpin}
-                                    onChange={(e) => setConfirmMpin(e.target.value)}
-                                     className="block w-full px-5 py-3 bg-gray-50 border-none rounded-2xl text-gray-900 text-lg font-bold tracking-[0.5em] text-center placeholder-gray-400 focus:ring-2 focus:ring-gray-900/5 transition-all outline-none"
-                                    placeholder="••••"
-                                />
-                            </div>
-                        </div>
-
-                         {/* Steps Indicator */}
-                         <div className="flex justify-center py-4 space-x-2">
-                             <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                            <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                             <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                            <div className="w-1.5 h-1.5 rounded-full bg-gray-200"></div>
-                        </div>    
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                             className="w-full py-3 px-6 bg-black text-white rounded-full text-sm font-bold tracking-wide hover:bg-gray-800 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-gray-900/20"
-                        >
-                            {loading ? 'Saving...' : 'Continue'}
-                        </button>
-                    </form>
-                )}
-            </div>
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full py-4 px-6 bg-black text-white text-lg font-bold rounded-2xl shadow-xl shadow-gray-200 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                                {loading ? 'Securing Account...' : 'Set PIN & Continue'}
+                            </button>
+                        </form>
+                    )}
+                </div>
+            </motion.div>
         </div>
     );
 };
