@@ -3,13 +3,12 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  // TODO: Replace with your actual Firebase configuration
-  apiKey: "AIzaSyBURr5_gvcwurdxC4AwKLcclh8RwKpMGwI",
-  authDomain: "paperlesh-4a836.firebaseapp.com",
-  projectId: "paperlesh-4a836",
-  storageBucket: "paperlesh-4a836.firebasestorage.app",
-  messagingSenderId: "311624894098",
-  appId: "1:311624894098:web:87635c8a5dd14e69c0c84b"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
