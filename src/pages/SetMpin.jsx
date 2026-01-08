@@ -1,18 +1,77 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiHash, FiShield, FiArrowRight, FiLock, FiChevronLeft, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiHash, FiShield, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { motion } from 'framer-motion';
+
+// Reusable PIN Input Component
+const MpinBlockInput = ({ value, onChange, disabled }) => {
+    const inputRefs = useRef([]);
+
+    const handleChange = (index, val) => {
+        if (!/^\d*$/.test(val)) return;
+
+        const newValue = [...value];
+        newValue[index] = val.slice(-1);
+        onChange(newValue);
+
+        if (val && index < 3) {
+            inputRefs.current[index + 1]?.focus();
+        }
+    };
+
+    const handleKeyDown = (index, e) => {
+        if (e.key === 'Backspace' && !value[index] && index > 0) {
+            inputRefs.current[index - 1]?.focus();
+        }
+    };
+
+    const handlePaste = (e) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text').slice(0, 4).replace(/\D/g, '');
+        if (pastedData) {
+            const newValue = [...value];
+            for (let i = 0; i < 4; i++) {
+                if (i < pastedData.length) {
+                    newValue[i] = pastedData[i];
+                }
+            }
+            onChange(newValue);
+            const focusIndex = Math.min(pastedData.length, 3);
+            inputRefs.current[focusIndex]?.focus();
+        }
+    };
+
+    return (
+        <div className="flex justify-center gap-3 sm:gap-4" onPaste={handlePaste}>
+            {value.map((digit, index) => (
+                <input
+                    key={index}
+                    ref={el => inputRefs.current[index] = el}
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={1}
+                    disabled={disabled}
+                    value={digit}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    className="w-14 h-14 sm:w-16 sm:h-16 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-2xl text-2xl font-black text-center text-gray-900 shadow-sm outline-none transition-all placeholder-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="•"
+                />
+            ))}
+        </div>
+    );
+};
 
 const SetMpin = () => {
     const navigate = useNavigate();
     const { currentUser, reauthenticate, verifySession } = useAuth();
     
     const [step, setStep] = useState('loading'); // loading, verify, set
-    const [mpin, setMpin] = useState('');
-    const [confirmMpin, setConfirmMpin] = useState('');
+    const [mpin, setMpin] = useState(['', '', '', '']);
+    const [confirmMpin, setConfirmMpin] = useState(['', '', '', '']);
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
@@ -54,10 +113,13 @@ const SetMpin = () => {
      const handleSetMpin = async (e) => {
         e.preventDefault();
         
-        if (mpin.length !== 4) {
+        const mpinString = mpin.join('');
+        const confirmString = confirmMpin.join('');
+
+        if (mpinString.length !== 4) {
             return setError('MPIN must be exactly 4 digits');
         }
-        if (mpin !== confirmMpin) {
+        if (mpinString !== confirmString) {
             return setError('MPINs do not match');
         }
 
@@ -68,7 +130,7 @@ const SetMpin = () => {
             // Save MPIN to Firestore
             const userRef = doc(db, 'users', currentUser.uid);
             await updateDoc(userRef, {
-                mpin: mpin,
+                mpin: mpinString,
                 hasMpin: true
             });
 
@@ -158,35 +220,15 @@ const SetMpin = () => {
                             </button>
                         </form>
                     ) : (
-                         <form onSubmit={handleSetMpin} className="space-y-6">
-                            <div className="space-y-4">
-                                <div className="relative group">
-                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
-                                        <FiHash size={20} />
-                                    </div>
-                                    <input
-                                        type="tel"
-                                        maxLength="4"
-                                        required
-                                        value={mpin}
-                                        onChange={(e) => setMpin(e.target.value.replace(/\D/g, ''))}
-                                        className="block w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-2xl text-base font-bold text-gray-900 placeholder-gray-400 transition-all outline-none"
-                                        placeholder="Enter 4-digit PIN"
-                                    />
+                         <form onSubmit={handleSetMpin} className="space-y-8">
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                     <label className="text-sm font-bold text-gray-400 uppercase tracking-widest text-center block mb-4">New PIN</label>
+                                     <MpinBlockInput value={mpin} onChange={setMpin} disabled={loading} />
                                 </div>
-                                <div className="relative group">
-                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
-                                        <FiShield size={20} />
-                                    </div>
-                                    <input
-                                        type="tel"
-                                        maxLength="4"
-                                        required
-                                        value={confirmMpin}
-                                        onChange={(e) => setConfirmMpin(e.target.value.replace(/\D/g, ''))}
-                                        className="block w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-2xl text-base font-bold text-gray-900 placeholder-gray-400 transition-all outline-none"
-                                        placeholder="Confirm 4-digit PIN"
-                                    />
+                                <div className="space-y-2">
+                                     <label className="text-sm font-bold text-gray-400 uppercase tracking-widest text-center block mb-4">Confirm PIN</label>
+                                     <MpinBlockInput value={confirmMpin} onChange={setConfirmMpin} disabled={loading} />
                                 </div>
                             </div>
                             <button

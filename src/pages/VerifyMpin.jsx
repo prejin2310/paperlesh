@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiHash, FiShield, FiLock, FiLogOut } from 'react-icons/fi';
+import { FiLock, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -10,9 +10,10 @@ const VerifyMpin = () => {
     const navigate = useNavigate();
     const { currentUser, verifySession, logout } = useAuth();
     
-    const [mpin, setMpin] = useState('');
+    const [mpin, setMpin] = useState(['', '', '', '']);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const inputRefs = useRef([]);
 
     // If no user is logged in, redirect to login
     useEffect(() => {
@@ -24,8 +25,10 @@ const VerifyMpin = () => {
     const handleVerifyMpin = async (e) => {
         e.preventDefault();
         
-        if (mpin.length !== 4) {
-            return setError('MPIN must be exactly 4 digits');
+        const finalMpin = mpin.join('');
+        if (finalMpin.length !== 4) {
+             // If manual submit
+            return setError('Please enter a 4-digit PIN');
         }
 
         try {
@@ -38,13 +41,14 @@ const VerifyMpin = () => {
 
             if (userSnap.exists()) {
                 const userData = userSnap.data();
-                if (userData.mpin === mpin) {
+                if (userData.mpin === finalMpin) {
                     // Correct MPIN, go to dashboard
                     verifySession();
                     navigate('/dashboard');
                 } else {
                      setError('Incorrect MPIN. Please try again.');
-                     setMpin(''); // Clear field on error
+                     setMpin(['', '', '', '']); // Clear field on error
+                     inputRefs.current[0].focus();
                 }
             } else {
                 setError('User data not found.');
@@ -55,6 +59,44 @@ const VerifyMpin = () => {
             setError('Failed to verify MPIN. Please try again.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleChange = (index, value) => {
+        if (!/^\d*$/.test(value)) return;
+
+        const newMpin = [...mpin];
+        newMpin[index] = value.slice(-1); // Only take last char
+        setMpin(newMpin);
+
+        // Auto focus next
+        if (value && index < 3) {
+            inputRefs.current[index + 1].focus();
+        }
+    };
+
+    const handleKeyDown = (index, e) => {
+        if (e.key === 'Backspace' && !mpin[index] && index > 0) {
+            inputRefs.current[index - 1].focus();
+        }
+    };
+
+    const handlePaste = (e) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text').slice(0, 4).replace(/\D/g, '');
+        if (pastedData) {
+            const newMpin = [...mpin]; // copy current state
+            // Fill with pasted data
+            for (let i = 0; i < 4; i++) {
+                if (i < pastedData.length) {
+                    newMpin[i] = pastedData[i];
+                }
+            }
+            setMpin(newMpin);
+            
+            // Focus appropriate field
+            const focusIndex = Math.min(pastedData.length, 3);
+            inputRefs.current[focusIndex].focus();
         }
     };
 
@@ -108,21 +150,23 @@ const VerifyMpin = () => {
                         </motion.div>
                     )}
 
-                    <form onSubmit={handleVerifyMpin} className="space-y-6">
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
-                                <FiHash size={20} />
-                            </div>
-                            <input
-                                type="tel"
-                                inputMode="numeric"
-                                maxLength="4"
-                                required
-                                value={mpin}
-                                onChange={(e) => setMpin(e.target.value.replace(/\D/g, ''))}
-                                className="block w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-2xl text-base font-bold text-gray-900 placeholder-gray-400 transition-all outline-none"
-                                placeholder="Enter 4-digit PIN"
-                            />
+                    <form onSubmit={handleVerifyMpin} className="space-y-8">
+                        
+                        <div className="flex justify-center gap-3 sm:gap-4" onPaste={handlePaste}>
+                            {mpin.map((digit, index) => (
+                                <input
+                                    key={index}
+                                    ref={el => inputRefs.current[index] = el}
+                                    type="password"
+                                    inputMode="numeric"
+                                    maxLength={1}
+                                    value={digit}
+                                    onChange={(e) => handleChange(index, e.target.value)}
+                                    onKeyDown={(e) => handleKeyDown(index, e)}
+                                    className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-2xl text-3xl font-black text-center text-gray-900 shadow-sm outline-none transition-all placeholder-gray-300"
+                                    placeholder="•"
+                                />
+                            ))}
                         </div>
 
                         <button
@@ -136,6 +180,7 @@ const VerifyMpin = () => {
 
                     <div className="text-center">
                          <button 
+                            type="button"
                             onClick={handleLogout}
                             className="inline-flex items-center text-sm font-bold text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
                         >

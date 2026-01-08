@@ -1,136 +1,112 @@
 import { useState, useEffect } from 'react';
-import { FiX, FiCheck, FiChevronRight, FiChevronLeft, FiStar, FiSun, FiCloud, FiCloudRain, FiCloudLightning, FiDroplet, FiWind, FiThermometer, FiShoppingBag, FiPlus, FiMinus, FiActivity } from 'react-icons/fi';
+import { FiX, FiCheck, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
-const MOODS = [
-    { emoji: '🙂', label: 'Happy' },
-    { emoji: '🤩', label: 'Fantastic' },
-    { emoji: '🥰', label: 'Romantic' },
-    { emoji: '😐', label: 'Normal' },
-    { emoji: '😫', label: 'Stressed' },
-    { emoji: '😴', label: 'Tired' },
-    { emoji: '😠', label: 'Angry' },
-    { emoji: '😢', label: 'Sad' }
-];
-
+const MOODS = ['😭', '😢', '😐', '🙂', '🤩'];
+// Updated Weather options
 const WEATHER_OPTIONS = [
-  { label: 'Sunny', color: 'bg-yellow-100 text-yellow-600', icon: FiSun },
-  { label: 'Cloudy', color: 'bg-gray-100 text-gray-600', icon: FiCloud },
-  { label: 'Stormy', color: 'bg-indigo-100 text-indigo-600', icon: FiCloudLightning },
-  { label: 'Rainy', color: 'bg-blue-100 text-blue-600', icon: FiCloudRain },
-  { label: 'Cold', color: 'bg-cyan-50 text-cyan-600', icon: FiWind },
-  { label: 'Hot', color: 'bg-orange-100 text-orange-600', icon: FiThermometer }
+  { label: 'Sunny', color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-300' },
+  { label: 'Partly Cloudy', color: 'bg-blue-50 text-blue-500 dark:bg-blue-900/30 dark:text-blue-300' },
+  { label: 'Cloudy', color: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
+  { label: 'Stormy', color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300' },
+  { label: 'Rainy', color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' },
+  { label: 'Cold', color: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-300' },
+  { label: 'Hot', color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-300' }
 ];
 
-const STEPS_OPTIONS = ['<1000', '1k-2.5k', '2.5k-5k', '5k-10k', '>10k'];
+const STEPS_OPTIONS = ['0', '<1000', '<2500', '<5000', '>5000'];
 
-const BASE_HABITS = ['Workout', 'Skin Care', 'Wake up early', 'Meditation'];
+// Updated Habits list logic will be handled via state
+const DEFAULT_HABITS = ['Workout', 'Skin Care', 'Wake up early', 'Meditation', 'Periods'];
 
-const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
+const DailyLogModal = ({ isOpen, onClose, date, initialData, onSave }) => {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
-  const [showStepsDropdown, setShowStepsDropdown] = useState(false);
   const totalSteps = 3;
   
-  // Dynamic Habits based on Gender
-  const habitsList = currentUser?.gender === 'Female' 
-    ? [...BASE_HABITS, 'Periods'] 
-    : BASE_HABITS;
-
   const [formData, setFormData] = useState({
     note: '',
-    mood: null, 
-    rating: 0, 
+    mood: 2,
+    rating: 3,
     spend: '',
-    steps: '',
-    sleep: 0, 
+    steps: '<2500',
+    sleep: 7,
     weather: [],
     
     // Habits & Stats
     habits: [],
-    water: 0, 
+    water: '',
     screenTime: '',
     longNote: '',
 
     // Questions
-    ateOutside: null,
-    watchedMovie: null,
+    ateOutside: false,
+    watchedMovie: false,
     movieData: {
       name: '',
-      platform: 'OTT', 
+      platform: 'OTT', // OTT or Theatre
       rating: 0,
       theatreLocation: '',
       withWhom: ''
     },
     
-    readBook: null,
+    readBook: false,
     bookData: {
       name: '',
       genre: '',
       author: '',
       rating: 0
-    },
-
-    shopping: null, 
-    shoppingData: {
-        item: '',
-        cost: ''
     }
   });
 
   useEffect(() => {
     if (isOpen) {
-      setStep(1); 
+      setStep(1); // Reset to first step
       if (initialData) {
         setFormData({
             note: initialData.note || '',
-            mood: initialData.mood !== undefined ? initialData.mood : null,
-            rating: initialData.rating || 0,
+            mood: initialData.mood !== undefined ? initialData.mood : 2,
+            rating: initialData.rating || 3,
             spend: initialData.spend || '',
-            steps: initialData.steps || '',
-            sleep: initialData.sleep || 7, 
+            steps: initialData.steps || '<2500',
+            sleep: initialData.sleep || 7,
             weather: initialData.weather || [],
             
             habits: initialData.habits || [],
-            water: initialData.water || 0,
+            water: initialData.water || '',
             screenTime: initialData.screenTime || '',
             longNote: initialData.longNote || '',
 
-            ateOutside: initialData.ateOutside !== undefined ? initialData.ateOutside : null,
-            watchedMovie: initialData.watchedMovie !== undefined ? initialData.watchedMovie : null,
+            ateOutside: initialData.ateOutside || false,
+            watchedMovie: initialData.watchedMovie || false,
             movieData: initialData.movieData || { name: '', platform: 'OTT', rating: 0, theatreLocation: '', withWhom: '' },
-            readBook: initialData.readBook !== undefined ? initialData.readBook : null,
+            readBook: initialData.readBook || false,
             bookData: initialData.bookData || { name: '', genre: '', author: '', rating: 0 },
-            
-            shopping: initialData.shopping !== undefined ? initialData.shopping : null,
-            shoppingData: initialData.shoppingData || { item: '', cost: '' }
         });
       } else {
         // Reset defaults
         setFormData({
             note: '',
-            mood: null,
-            rating: 0,
+            mood: 2,
+            rating: 3,
             spend: '',
-            steps: '',
-            sleep: 7, 
+            steps: '<2500',
+            sleep: 7,
             weather: [],
             habits: [],
-            water: 0,
+            water: '',
             screenTime: '',
             longNote: '',
-            ateOutside: null,
-            watchedMovie: null,
+            ateOutside: false,
+            watchedMovie: false,
             movieData: { name: '', platform: 'OTT', rating: 0, theatreLocation: '', withWhom: '' },
-            readBook: null,
+            readBook: false,
             bookData: { name: '', genre: '', author: '', rating: 0 },
-            shopping: null,
-            shoppingData: { item: '', cost: '' }
         });
       }
     }
@@ -142,7 +118,7 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
         if (current.includes(w)) {
             return { ...prev, weather: current.filter(i => i !== w) };
         }
-        if (current.length >= 2) return prev; 
+        if (current.length >= 2) return prev; // Max 2
         return { ...prev, weather: [...current, w] };
     });
   };
@@ -153,30 +129,6 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
         habits: prev.habits.includes(h) 
             ? prev.habits.filter(i => i !== h)
             : [...prev.habits, h]
-    }));
-  };
-
-  // Generic Toggle Function for Yes/No with Deselect
-  const toggleBooleanParams = (field, value) => {
-    setFormData(prev => ({
-        ...prev,
-        [field]: prev[field] === value ? null : value
-    }));
-  };
-    
-  // Toggle Mood separate because it's an index/key
-  const toggleMood = (index) => {
-     setFormData(prev => ({
-        ...prev,
-        mood: prev.mood === index ? null : index
-     }));
-  };
-  
-  // Toggle Rating
-  const toggleRating = (value) => {
-    setFormData(prev => ({
-        ...prev,
-        rating: prev.rating === value ? 0 : value
     }));
   };
 
@@ -220,10 +172,10 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="bg-[#FDFBF9] dark:bg-gray-900 w-full max-w-xl md:rounded-[2rem] rounded-t-[2rem] shadow-2xl pointer-events-auto h-[90vh] flex flex-col overflow-hidden z-50"
+        className="bg-[#FDFBF9] dark:bg-gray-900 w-full max-w-xl md:rounded-[2rem] rounded-t-[2rem] shadow-2xl pointer-events-auto h-[90vh] flex flex-col overflow-hidden"
       >
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-20">
+        <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md sticky top-0 z-20">
             <div>
                  <h2 className="text-xl font-black text-gray-900 dark:text-white">
                     {step === 1 && "Daily Overview"}
@@ -232,7 +184,7 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                  </h2>
                  <p className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest">Step {step} of {totalSteps}</p>
             </div>
-            <button onClick={onClose} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+            <button onClick={onClose} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
                 <FiX className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
         </div>
@@ -260,51 +212,47 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                         </div>
 
                          {/* Rating & Mood */}
-                         <div className="space-y-4">
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-white dark:bg-gray-800 p-4 rounded-3xl shadow-sm space-y-3">
                                 <label className="text-xs font-bold uppercase tracking-widest text-orange-400">Day Rating</label>
-                                <div className="flex justify-between px-2">
+                                <div className="flex justify-between">
                                     {[1, 2, 3, 4, 5].map((s) => (
                                         <button
                                             key={s}
-                                            onClick={() => toggleRating(s)}
-                                            className="transition-transform active:scale-90"
+                                            onClick={() => setFormData(prev => ({ ...prev, rating: s }))}
+                                            className={`w-10 h-10 rounded-full font-bold transition-all ${
+                                                formData.rating >= s ? 'bg-orange-400 text-white shadow-lg shadow-orange-200' : 'bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-500'
+                                            }`}
                                         >
-                                           <FiStar 
-                                                className={`w-8 h-8 ${formData.rating >= s ? 'fill-orange-400 text-orange-400' : 'text-gray-200 dark:text-gray-700'}`} 
-                                           />
+                                            {s}
                                         </button>
                                     ))}
                                 </div>
                             </div>
                             <div className="bg-white dark:bg-gray-800 p-4 rounded-3xl shadow-sm space-y-3">
                                 <label className="text-xs font-bold uppercase tracking-widest text-blue-400">Mood</label>
-                                <div className="grid grid-cols-4 gap-4">
+                                <div className="flex justify-between">
                                     {MOODS.map((m, i) => (
-                                        <div key={i} className="flex flex-col items-center gap-1">
-                                            <button
-                                                onClick={() => toggleMood(i)}
-                                                className={`text-2xl transition-transform ${
-                                                    formData.mood === i ? 'scale-125' : 'opacity-40 grayscale'
-                                                }`}
-                                            >
-                                                {m.emoji}
-                                            </button>
-                                            <span className={`text-[10px] font-bold ${formData.mood === i ? 'text-gray-800 dark:text-white' : 'text-gray-300 dark:text-gray-600'}`}>
-                                                {m.label}
-                                            </span>
-                                        </div>
+                                        <button
+                                            key={i}
+                                            onClick={() => setFormData(prev => ({ ...prev, mood: i }))}
+                                            className={`text-2xl transition-transform ${
+                                                formData.mood === i ? 'scale-125' : 'opacity-40 grayscale'
+                                            }`}
+                                        >
+                                            {m}
+                                        </button>
                                     ))}
                                 </div>
                             </div>
                          </div>
 
                          {/* Spend & Steps */}
-                         <div className="grid grid-cols-1 gap-4">
+                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Spend</label>
                                 <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-gray-400 dark:text-gray-500">₹</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-gray-400 dark:text-gray-500">$</span>
                                     <input 
                                         type="number"
                                         value={formData.spend}
@@ -314,48 +262,15 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                                     />
                                 </div>
                             </div>
-                            
-                            <div className="space-y-2 relative">
+                            <div className="space-y-2">
                                 <label className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Steps</label>
-                                <div className="relative">
-                                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none z-10"><FiActivity size={20} /></span>
-                                    <button
-                                        onClick={() => setShowStepsDropdown(!showStepsDropdown)}
-                                        className="w-full bg-white dark:bg-gray-800 rounded-2xl py-4 pl-12 pr-10 font-bold text-lg text-gray-900 dark:text-white shadow-sm outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 text-left flex items-center h-[60px]"
-                                    >
-                                        {formData.steps || <span className="text-gray-400 dark:text-gray-500 text-base">Select count</span>}
-                                    </button>
-                                    <FiChevronRight 
-                                        className={`absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 transition-transform duration-200 pointer-events-none ${showStepsDropdown ? '-rotate-90' : 'rotate-90'}`} 
-                                    />
-                                    
-                                    <AnimatePresence>
-                                        {showStepsDropdown && (
-                                            <motion.div
-                                                initial={{ opacity: 0, y: -10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: -10 }}
-                                                className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden z-50 py-2"
-                                            >
-                                                {STEPS_OPTIONS.map((opt) => (
-                                                    <button
-                                                        key={opt}
-                                                        onClick={() => {
-                                                            setFormData(prev => ({ ...prev, steps: opt }));
-                                                            setShowStepsDropdown(false);
-                                                        }}
-                                                        className={`w-full text-left px-6 py-3 font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex justify-between items-center ${
-                                                            formData.steps === opt ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/30' : 'text-gray-600 dark:text-gray-300'
-                                                        }`}
-                                                    >
-                                                        {opt}
-                                                        {formData.steps === opt && <FiCheck />}
-                                                    </button>
-                                                ))}
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
+                                <select 
+                                    value={formData.steps}
+                                    onChange={e => setFormData(prev => ({ ...prev, steps: e.target.value }))}
+                                    className="w-full bg-white dark:bg-gray-800 rounded-2xl py-4 px-4 font-bold text-gray-900 dark:text-white shadow-sm outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 appearance-none"
+                                >
+                                    {STEPS_OPTIONS.map(opt => <option key={opt} value={opt} className="dark:bg-gray-800">{opt}</option>)}
+                                </select>
                             </div>
                          </div>
 
@@ -367,18 +282,16 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                              <div className="flex flex-wrap gap-2">
                                 {WEATHER_OPTIONS.map((w) => {
                                     const isSelected = formData.weather.includes(w.label);
-                                    const Icon = w.icon;
                                     return (
                                         <button
                                             key={w.label}
                                             onClick={() => toggleWeather(w.label)}
-                                            className={`px-4 py-3 rounded-xl text-xs font-bold transition-all border-2 flex items-center gap-2 ${
+                                            className={`px-4 py-3 rounded-xl text-xs font-bold transition-all border-2 ${
                                                 isSelected 
                                                 ? `${w.color} border-transparent shadow-sm scale-105` 
                                                 : 'bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-transparent hover:border-gray-100 dark:hover:border-gray-700'
                                             }`}
                                         >
-                                            <Icon className={isSelected ? 'text-current' : 'text-gray-300 dark:text-gray-600'} />
                                             {w.label}
                                         </button>
                                     )
@@ -389,7 +302,7 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                         {/* Sleep Slider */}
                         <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm space-y-4">
                             <div className="flex justify-between items-end">
-                                <label className="text-xs font-bold uppercase tracking-widest text-indigo-400">Sleep (Last Night)</label>
+                                <label className="text-xs font-bold uppercase tracking-widest text-indigo-400">Sleep</label>
                                 <span className="text-2xl font-black text-indigo-900 dark:text-indigo-400">{formData.sleep} <span className="text-sm text-gray-400 dark:text-gray-500 font-bold">hrs</span></span>
                             </div>
                             <input 
@@ -399,7 +312,7 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                                 step="0.5"
                                 value={formData.sleep}
                                 onChange={e => setFormData(prev => ({ ...prev, sleep: parseFloat(e.target.value) }))}
-                                className="w-full accent-indigo-500 h-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg appearance-none cursor-pointer"
+                                className="w-full accent-indigo-500 h-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg appearance-none cursor-pointer"
                             />
                             <div className="flex justify-between text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest">
                                 <span>1h</span>
@@ -419,9 +332,9 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                     >
                          {/* Default Habits */}
                         <div className="space-y-3">
-                            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Which habits did you complete?</h3>
+                            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Daily Habits</h3>
                             <div className="grid grid-cols-2 gap-3">
-                                {habitsList.map(habit => (
+                                {DEFAULT_HABITS.map(habit => (
                                     <button
                                         key={habit}
                                         onClick={() => toggleHabit(habit)}
@@ -436,53 +349,44 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                                     </button>
                                 ))}
                             </div>
-                            <button className="text-xs font-bold text-indigo-500 hover:text-indigo-600 block w-full text-center py-2">
+                            <button className="text-xs font-bold text-indigo-500 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 block w-full text-center py-2">
                                 + Add/Edit Habits in Profile
                             </button>
                         </div>
 
                         {/* Water & Screen Time */}
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm">
-                                <label className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2 block">How many glasses of water?</label>
-                                <div className="flex items-center justify-between">
-                                    <button 
-                                        onClick={() => setFormData(p => ({ ...p, water: Math.max(0, p.water - 1) }))}
-                                        className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-500 flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                                    >
-                                        <FiMinus size={14} />
-                                    </button>
-                                    <div className="text-center">
-                                        <span className="text-xl font-black text-gray-900 dark:text-white">{formData.water}</span>
-                                        <div className="text-[10px] text-gray-400 dark:text-gray-500 font-bold">Glasses</div>
-                                    </div>
-                                    <button 
-                                        onClick={() => setFormData(p => ({ ...p, water: p.water + 1 }))}
-                                        className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-500 flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                                    >
-                                        <FiPlus size={14} />
-                                    </button>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-widest text-blue-400">Water</label>
+                                <div className="relative">
+                                    <input 
+                                        type="number"
+                                        value={formData.water}
+                                        onChange={e => setFormData(prev => ({ ...prev, water: e.target.value }))}
+                                        className="w-full bg-white dark:bg-gray-800 rounded-2xl p-4 font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900"
+                                        placeholder="0"
+                                    />
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 dark:text-gray-500">L</span>
                                 </div>
                             </div>
-
-                            <div className="space-y-2 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm">
-                                <label className="text-xs font-bold uppercase tracking-widest text-purple-400 mb-2 block">Screen Time Duration?</label>
-                                <div className="relative mt-2">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-widest text-purple-400">Screen Time</label>
+                                <div className="relative">
                                     <input 
                                         type="number"
                                         value={formData.screenTime}
                                         onChange={e => setFormData(prev => ({ ...prev, screenTime: e.target.value }))}
-                                        className="w-full bg-gray-50 dark:bg-gray-900 rounded-xl p-3 font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900 text-center"
+                                        className="w-full bg-white dark:bg-gray-800 rounded-2xl p-4 font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900"
                                         placeholder="0"
                                     />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 dark:text-gray-500">HRS</span>
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 dark:text-gray-500">H</span>
                                 </div>
                             </div>
                         </div>
 
                          {/* Long Note */}
                          <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Any special thoughts for today?</label>
+                            <label className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Daily Journal</label>
                             <textarea
                                 value={formData.longNote}
                                 onChange={e => setFormData(prev => ({ ...prev, longNote: e.target.value }))}
@@ -501,47 +405,17 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                         exit={{ x: -20, opacity: 0 }}
                         className="space-y-8"
                     >
-                         {/* Shopping */}
-                         <div className="space-y-4">
-                            <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl flex justify-between items-center shadow-sm">
-                                <span className="font-bold text-gray-900 dark:text-white flex items-center gap-2"><FiShoppingBag className="text-orange-400"/> Did you shop today?</span>
-                                 <div className="flex gap-2">
-                                <button 
-                                    onClick={() => toggleBooleanParams('shopping', true)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${formData.shopping === true ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
-                                >Yes</button>
-                                <button 
-                                    onClick={() => toggleBooleanParams('shopping', false)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${formData.shopping === false ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
-                                >No</button>
-                            </div>
-                            </div>
-                            {formData.shopping && (
-                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
-                                    <input placeholder="What did you buy?" className="w-full bg-white dark:bg-gray-900 p-3 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
-                                        value={formData.shoppingData.item} onChange={e => setFormData(prev => ({ ...prev, shoppingData: { ...prev.shoppingData, item: e.target.value } }))}
-                                    />
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-gray-400 dark:text-gray-500 text-xs">₹</span>
-                                        <input type="number" placeholder="Cost" className="w-full bg-white dark:bg-gray-900 p-3 pl-6 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
-                                            value={formData.shoppingData.cost} onChange={e => setFormData(prev => ({ ...prev, shoppingData: { ...prev.shoppingData, cost: e.target.value } }))}
-                                        />
-                                    </div>
-                                </motion.div>
-                            )}
-                         </div>
-
                          {/* Outside Food */}
                          <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl flex justify-between items-center shadow-sm">
                             <span className="font-bold text-gray-900 dark:text-white">Did you eat outside today?</span>
                             <div className="flex gap-2">
                                 <button 
-                                    onClick={() => toggleBooleanParams('ateOutside', true)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${formData.ateOutside === true ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
+                                    onClick={() => setFormData(prev => ({ ...prev, ateOutside: true }))}
+                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${formData.ateOutside ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
                                 >Yes</button>
                                 <button 
-                                    onClick={() => toggleBooleanParams('ateOutside', false)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${formData.ateOutside === false ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
+                                    onClick={() => setFormData(prev => ({ ...prev, ateOutside: false }))}
+                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${!formData.ateOutside ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
                                 >No</button>
                             </div>
                          </div>
@@ -549,21 +423,21 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                          {/* Movie / Series */}
                          <div className="space-y-4">
                             <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl flex justify-between items-center shadow-sm">
-                                <span className="font-bold text-gray-900 dark:text-white">Watched anything?</span>
+                                <span className="font-bold text-gray-900 dark:text-white">Detailed Review: Watched anything?</span>
                                  <div className="flex gap-2">
                                 <button 
-                                    onClick={() => toggleBooleanParams('watchedMovie', true)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${formData.watchedMovie === true ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
+                                    onClick={() => setFormData(prev => ({ ...prev, watchedMovie: true }))}
+                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${formData.watchedMovie ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
                                 >Yes</button>
                                 <button 
-                                    onClick={() => toggleBooleanParams('watchedMovie', false)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${formData.watchedMovie === false ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
+                                    onClick={() => setFormData(prev => ({ ...prev, watchedMovie: false }))}
+                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${!formData.watchedMovie ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
                                 >No</button>
                             </div>
                             </div>
                             {formData.watchedMovie && (
                                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
-                                    <input placeholder="Movie / Series Name" className="w-full bg-white dark:bg-gray-900 p-3 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                    <input placeholder="Movie / Series Name" className="w-full bg-white dark:bg-gray-800 p-3 rounded-xl text-sm font-bold outline-none dark:text-white" 
                                         value={formData.movieData.name} onChange={e => setFormData(prev => ({ ...prev, movieData: { ...prev.movieData, name: e.target.value } }))}
                                     />
                                     <div className="flex gap-2">
@@ -575,15 +449,15 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                                     {/* Additional fields for Theatre */}
                                     {formData.movieData.platform === 'Theatre' && (
                                         <div className="grid grid-cols-2 gap-2">
-                                             <input placeholder="Where?" className="bg-white dark:bg-gray-900 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                             <input placeholder="Where?" className="bg-white dark:bg-gray-800 p-3 rounded-xl text-xs font-bold outline-none dark:text-white" 
                                                 value={formData.movieData.theatreLocation} onChange={e => setFormData(prev => ({ ...prev, movieData: { ...prev.movieData, theatreLocation: e.target.value } }))}
                                              />
-                                             <input placeholder="With whom?" className="bg-white dark:bg-gray-900 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                             <input placeholder="With whom?" className="bg-white dark:bg-gray-800 p-3 rounded-xl text-xs font-bold outline-none dark:text-white" 
                                                  value={formData.movieData.withWhom} onChange={e => setFormData(prev => ({ ...prev, movieData: { ...prev.movieData, withWhom: e.target.value } }))}
                                              />
                                         </div>
                                     )}
-                                     <input type="number" placeholder="Rating (1-10)" className="w-full bg-white dark:bg-gray-900 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                     <input type="number" placeholder="Rating (1-10)" className="w-full bg-white dark:bg-gray-800 p-3 rounded-xl text-xs font-bold outline-none dark:text-white" 
                                         value={formData.movieData.rating} onChange={e => setFormData(prev => ({ ...prev, movieData: { ...prev.movieData, rating: e.target.value } }))}
                                      />
                                 </motion.div>
@@ -593,32 +467,32 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                          {/* Book */}
                          <div className="space-y-4">
                             <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl flex justify-between items-center shadow-sm">
-                                <span className="font-bold text-gray-900 dark:text-white">Read a book?</span>
+                                <span className="font-bold text-gray-900 dark:text-white">Detailed Review: Read a book?</span>
                                  <div className="flex gap-2">
                                 <button 
-                                    onClick={() => toggleBooleanParams('readBook', true)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${formData.readBook === true ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
+                                    onClick={() => setFormData(prev => ({ ...prev, readBook: true }))}
+                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${formData.readBook ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
                                 >Yes</button>
                                 <button 
-                                    onClick={() => toggleBooleanParams('readBook', false)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${formData.readBook === false ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
+                                    onClick={() => setFormData(prev => ({ ...prev, readBook: false }))}
+                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${!formData.readBook ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}
                                 >No</button>
                             </div>
                             </div>
                             {formData.readBook && (
                                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
-                                    <input placeholder="Book Name" className="w-full bg-white dark:bg-gray-900 p-3 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                    <input placeholder="Book Name" className="w-full bg-white dark:bg-gray-800 p-3 rounded-xl text-sm font-bold outline-none dark:text-white" 
                                         value={formData.bookData.name} onChange={e => setFormData(prev => ({ ...prev, bookData: { ...prev.bookData, name: e.target.value } }))}
                                     />
                                     <div className="grid grid-cols-2 gap-2">
-                                        <input placeholder="Author" className="bg-white dark:bg-gray-900 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                        <input placeholder="Author" className="bg-white dark:bg-gray-800 p-3 rounded-xl text-xs font-bold outline-none dark:text-white" 
                                             value={formData.bookData.author} onChange={e => setFormData(prev => ({ ...prev, bookData: { ...prev.bookData, author: e.target.value } }))}
                                         />
-                                        <input placeholder="Genre" className="bg-white dark:bg-gray-900 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                        <input placeholder="Genre" className="bg-white dark:bg-gray-800 p-3 rounded-xl text-xs font-bold outline-none dark:text-white" 
                                             value={formData.bookData.genre} onChange={e => setFormData(prev => ({ ...prev, bookData: { ...prev.bookData, genre: e.target.value } }))}
                                         />
                                     </div>
-                                    <input type="number" placeholder="Rating (1-5)" className="w-full bg-white dark:bg-gray-900 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                    <input type="number" placeholder="Rating (1-5)" className="w-full bg-white dark:bg-gray-800 p-3 rounded-xl text-xs font-bold outline-none dark:text-white" 
                                         value={formData.bookData.rating} onChange={e => setFormData(prev => ({ ...prev, bookData: { ...prev.bookData, rating: e.target.value } }))}
                                     />
                                 </motion.div>
@@ -631,11 +505,11 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
         </div>
 
         {/* Footer Actions */}
-        <div className="p-6 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex gap-4 z-20">
+        <div className="p-6 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-800 flex gap-4 z-20">
             {step > 1 && (
                 <button 
                     onClick={prevStep}
-                    className="px-6 py-4 rounded-2xl font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    className="px-6 py-4 rounded-2xl font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 >
                     Back
                 </button>
@@ -663,4 +537,4 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
   );
 };
 
-export default DailyLogWizard;
+export default DailyLogModal;

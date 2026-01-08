@@ -13,7 +13,7 @@ const Navbar = () => {
   return (
     <>
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-6 left-6 right-6 bg-black text-white rounded-full shadow-2xl py-4 z-50">
+      <nav className="md:hidden fixed bottom-6 left-6 right-6 bg-black dark:bg-white text-white dark:text-black rounded-full shadow-2xl py-4 z-50">
         <div className="flex justify-around items-center">
           {navItems.map((item) => (
             <NavLink
@@ -22,8 +22,8 @@ const Navbar = () => {
               className={({ isActive }) =>
                 `flex flex-col items-center justify-center p-2 rounded-full transition-all duration-300 ${
                   isActive
-                    ? 'bg-white text-black translate-y-[-4px] shadow-lg scale-110'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-white dark:bg-black text-black dark:text-white translate-y-[-4px] shadow-lg scale-110'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-black'
                 }`
               }
             >
@@ -34,9 +34,9 @@ const Navbar = () => {
       </nav>
 
       {/* Desktop Side Navigation */}
-      <nav className="hidden md:flex flex-col w-72 bg-white border-r border-gray-100 h-screen sticky top-0 p-6">
+      <nav className="hidden md:flex flex-col w-72 bg-white dark:bg-black border-r border-gray-100 dark:border-gray-900 h-screen sticky top-0 p-6">
         <div className="mb-10 px-2">
-          <h1 className="text-3xl font-black tracking-tighter text-black">MyJournle.</h1>
+          <h1 className="text-3xl font-black tracking-tighter text-black dark:text-white">MyJournle.</h1>
         </div>
         
         <div className="flex-1 space-y-2">
@@ -47,8 +47,8 @@ const Navbar = () => {
               className={({ isActive }) =>
                 `flex items-center space-x-4 px-6 py-4 rounded-2xl transition-all duration-300 group ${
                   isActive
-                    ? 'bg-black text-white shadow-xl shadow-gray-200'
-                    : 'text-gray-400 hover:bg-gray-50 hover:text-black'
+                    ? 'bg-black dark:bg-white text-white dark:text-black shadow-xl shadow-gray-200 dark:shadow-none'
+                    : 'text-gray-400 dark:text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-black dark:hover:text-white'
                 }`
               }
             >
@@ -60,8 +60,8 @@ const Navbar = () => {
           ))}
         </div>
 
-        <div className="mt-auto pt-6 border-t border-gray-100">
-          <button className="flex items-center space-x-4 px-6 py-4 w-full text-gray-400 hover:text-black hover:bg-gray-50 rounded-2xl transition-all duration-300">
+        <div className="mt-auto pt-6 border-t border-gray-100 dark:border-gray-900">
+          <button className="flex items-center space-x-4 px-6 py-4 w-full text-gray-400 dark:text-gray-600 hover:text-black dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-900 rounded-2xl transition-all duration-300">
             <FiLogOut className="w-5 h-5" />
             <span className="font-bold text-sm">Logout</span>
           </button>

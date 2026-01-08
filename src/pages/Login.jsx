@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiMail, FiLock, FiChevronLeft, FiEye, FiEyeOff, FiAlertCircle, FiCheck } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, resetPassword } = useAuth();
+  const { login, resetPassword, currentUser } = useAuth();
   
   const [isResetting, setIsResetting] = useState(false);
   const [formData, setFormData] = useState({
@@ -30,14 +30,19 @@ const Login = () => {
       setError('');
       setLoading(true);
       await login(formData.email, formData.password);
-      navigate('/verify-mpin');
+      // Navigation will be handled by the useEffect below
     } catch (err) {
       console.error(err);
       setError('Failed to log in. Please check your email and password.');
-    } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/verify-mpin');
+    }
+  }, [currentUser, navigate]);
 
   const handleReset = async (e) => {
     e.preventDefault();

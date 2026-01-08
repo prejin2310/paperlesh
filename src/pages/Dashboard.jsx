@@ -16,6 +16,7 @@ import {
   isFuture
 } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { 
   FiEdit2, 
   FiPlus, 
@@ -48,6 +49,18 @@ const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [loading, setLoading] = useState(true);
+  const { isDarkMode, toggleTheme } = useTheme();
+
+  const getTimeIcon = () => {
+      const hour = new Date().getHours();
+      if (hour >= 6 && hour < 18) {
+          return <FiSun className="text-yellow-400 ml-auto" />;
+      }
+      return <FiMoon className="text-indigo-400 ml-auto" />;
+  };
+
+
+
 
   // Fetch Logs (Yearly for stats)
   useEffect(() => {
@@ -241,7 +254,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF9] pb-24 md:pb-8 pt-6 px-6 relative overflow-hidden font-sans">
+    <div className={`min-h-screen pb-24 md:pb-8 pt-6 px-6 relative overflow-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'bg-black text-white' : 'bg-[#FDFBF9] text-gray-900'}`}>
       
       {/* Background Illustration & Ambient Color */}
       <div className="absolute top-0 left-0 w-full h-[600px] z-0 pointer-events-none overflow-hidden">
@@ -249,87 +262,91 @@ const Dashboard = () => {
          <motion.div 
             animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0.8, 0.5] }}
             transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-20 -right-20 w-[400px] h-[400px] bg-gradient-to-br from-orange-100/80 to-transparent rounded-full blur-3xl"
+            className="absolute -top-20 -right-20 w-[400px] h-[400px] bg-gradient-to-br from-orange-100/80 to-transparent rounded-full blur-3xl dark:from-orange-900/40"
          />
          
          {/* Soft Blue Sky Top Left */}
          <motion.div 
             animate={{ scale: [1, 1.2, 1], x: [0, 20, 0] }}
             transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute -top-20 -left-20 w-[400px] h-[400px] bg-gradient-to-br from-blue-50/80 to-transparent rounded-full blur-3xl"
+            className="absolute -top-20 -left-20 w-[400px] h-[400px] bg-gradient-to-br from-blue-50/80 to-transparent rounded-full blur-3xl dark:from-blue-900/40"
          />
          
          {/* Abstract geometric clouds */}
          <motion.div 
             animate={{ y: [0, -15, 0], opacity: [0.4, 0.7, 0.4] }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-20 right-10 w-32 h-32 bg-yellow-100/50 rounded-full blur-2xl"
+            className="absolute top-20 right-10 w-32 h-32 bg-yellow-100/50 rounded-full blur-2xl dark:bg-yellow-900/20"
          />
          
          <motion.div 
             animate={{ x: [0, 30, 0], opacity: [0.3, 0.6, 0.3] }}
             transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-            className="absolute top-40 left-10 w-48 h-48 bg-blue-100/40 rounded-full blur-3xl"
+            className="absolute top-40 left-10 w-48 h-48 bg-blue-100/40 rounded-full blur-3xl dark:bg-blue-900/20"
          />
-         
-         {/* SVG Clouds for Illustration feel */}
-         <motion.svg 
-            animate={{ x: [0, -10, 0], y: [0, 5, 0] }}
-            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-[5%] right-[-5%] text-orange-200/30 w-64 h-64" viewBox="0 0 200 200" fill="currentColor"
-         >
-            <path d="M40,100 Q60,50 100,100 T160,100 T200,100 V150 H0 V100 Z" className="blur-xl" />
-         </motion.svg>
       </div>
 
       <div className="max-w-md mx-auto space-y-6 relative z-10">
         
         {/* Top Header similar to image */}
         <div className="flex justify-between items-start">
-            <button className="p-2 -ml-2 text-gray-800 transition-colors">
+            <button className={`p-2 -ml-2 transition-colors ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                 <FiChevronLeft size={24} />
             </button>
-            <button className="p-2 rounded-full bg-white shadow-sm text-gray-400">
-                <FiBell size={20} />
+            <button 
+                onClick={toggleTheme}
+                className={`p-2 rounded-full shadow-sm transition-colors cursor-pointer ${isDarkMode ? 'bg-gray-800 text-yellow-300' : 'bg-white text-gray-900'}`}
+            >
+                {isDarkMode ? <FiMoon size={20} /> : <FiSun size={20} />}
             </button>
         </div>
 
         {/* Date & Title */}
         <div className="space-y-1">
-             <div className="flex items-center gap-1 text-gray-600 font-bold text-sm">
+             <div className={`flex items-center gap-1 font-bold text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 <span>Today, {format(new Date(), 'MMMM d')}</span>
-                <FiChevronRight className="rotate-90 text-gray-400" size={14} />
-                 <FiSun className="text-yellow-400 ml-auto" />
+                 {getTimeIcon()}
             </div>
             
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight pt-2">How was your day?</h1>
-            <p className="text-gray-400 font-medium text-sm">Log your day in under 2 minutes.</p>
+            <h1 className={`text-3xl font-black tracking-tight pt-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                How was your day?
+            </h1>
+            <p className="text-gray-400 font-medium text-sm">
+                Log your day in under 2 minutes.
+            </p>
         </div>
 
         {/* Recent Days Scroll */}
         <div className="space-y-4">
              <div className="flex justify-between items-center px-1">
-                 <h3 className="text-base font-bold text-gray-800">This Week</h3>
+                 <h3 className={`text-base font-bold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>This Week</h3>
             </div>
             {renderRecentDays()}
         </div>
 
         {/* Action Button Card */}
-        <div className="bg-white rounded-[2rem] p-2 shadow-xl shadow-gray-100/50">
+        <div className={`rounded-[2rem] p-2 shadow-xl ${isDarkMode ? 'bg-gray-800 shadow-none' : 'bg-white shadow-gray-100/50'}`}>
              <button 
-                className="w-full py-4 bg-gradient-to-r from-blue-300 to-indigo-300 text-white rounded-[1.5rem] font-bold shadow-lg shadow-blue-200 hover:shadow-xl hover:scale-[1.01] transition-all flex items-center justify-center gap-2 text-lg"
                 onClick={() => handleOpenLog(todayStr)}
+                className={`w-full py-4 rounded-[1.5rem] font-bold shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all flex items-center justify-center gap-2 text-lg cursor-pointer ${
+                    isDarkMode ? 'bg-white text-black shadow-none' : 'bg-black text-white shadow-gray-200'
+                }`}
             >
-                {isLoggedToday ? 'Edit Today\'s Entry' : 'Log Today\'s Entry'}
+                <div>
+                     <span className="block">Log Today's Entry</span>
+                </div>
+                <div className={`p-1 rounded-full ${isDarkMode ? 'bg-black text-white' : 'bg-white text-black'}`}>
+                    <FiPlus />
+                </div>
             </button>
         </div>
 
         {/* Daily Summary Card */}
-        <div className="bg-white rounded-[2rem] p-6 shadow-xl shadow-gray-100/50 space-y-5">
-            <div className="flex justify-between items-center pb-2 border-b border-gray-50">
-                <h3 className="text-lg font-bold text-gray-800">{format(new Date(), 'MMMM d')}</h3>
-                <div className="flex items-center gap-1 text-gray-400 text-xs font-bold cursor-pointer hover:text-black transition-colors">
-                    Today <FiChevronRight />
+        <div className={`rounded-[2rem] p-6 shadow-xl space-y-5 ${isDarkMode ? 'bg-gray-800 shadow-none' : 'bg-white shadow-gray-100/50'}`}>
+            <div className={`flex justify-between items-center pb-2 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-50'}`}>
+                <h3 className={`text-lg font-bold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{format(new Date(), 'MMMM d')}</h3>
+                <div className="flex items-center gap-1 text-gray-400 text-xs font-bold cursor-pointer hover:text-gray-500 transition-colors">
+                    Today
                 </div>
             </div>
 
