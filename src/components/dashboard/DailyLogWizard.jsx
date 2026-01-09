@@ -182,6 +182,13 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
 
   const handleSubmit = async () => {
     setLoading(true);
+
+    if (!formData.rating) {
+        toast.error("Please rate your day before saving!");
+        setLoading(false);
+        return;
+    }
+
     try {
       const logData = {
         ...formData,

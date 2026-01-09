@@ -13,7 +13,7 @@ const Navbar = () => {
   return (
     <>
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-6 left-6 right-6 bg-black dark:bg-white text-white dark:text-black rounded-full shadow-2xl py-4 z-50">
+      <nav className="md:hidden fixed bottom-6 left-6 right-6 bg-black dark:bg-gray-900 border dark:border-gray-800 text-white dark:text-gray-300 rounded-full shadow-2xl py-4 z-50">
         <div className="flex justify-around items-center">
           {navItems.map((item) => (
             <NavLink
@@ -22,8 +22,8 @@ const Navbar = () => {
               className={({ isActive }) =>
                 `flex flex-col items-center justify-center p-2 rounded-full transition-all duration-300 ${
                   isActive
-                    ? 'bg-white dark:bg-black text-black dark:text-white translate-y-[-4px] shadow-lg scale-110'
-                    : 'text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-black'
+                    ? 'bg-white dark:bg-gray-800 text-black dark:text-white translate-y-[-4px] shadow-lg scale-110'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-gray-300'
                 }`
               }
             >

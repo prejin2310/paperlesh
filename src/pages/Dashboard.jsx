@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   format, 
   startOfYear, 
@@ -8,6 +8,7 @@ import {
   eachDayOfInterval, 
   isSameDay, 
   subDays,
+  addDays,
   isToday,
   getDay,
   parseISO,
@@ -39,7 +40,9 @@ import {
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import DailyLogWizard from '../components/dashboard/DailyLogWizard';
+import CalendarModal from '../components/dashboard/CalendarModal';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
@@ -47,6 +50,7 @@ const Dashboard = () => {
   // State
   const [logs, setLogs] = useState({}); // Map of dateString -> logData
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [loading, setLoading] = useState(true);
   const { isDarkMode, toggleTheme } = useTheme();
@@ -108,11 +112,21 @@ const Dashboard = () => {
     
   const renderRecentDays = () => {
        const today = new Date();
-       const start = startOfWeek(today, { weekStartsOn: 1 }); // Monday start
-       const end = endOfWeek(today, { weekStartsOn: 1 });
+       const scrollRef = useRef(null);
+
+       // Scroll to end on mount
+       useEffect(() => {
+           if (scrollRef.current) {
+               scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+           }
+       }, []);
+
+       // Display: Today - 6 days ... Today (7 days total)
+       const start = subDays(today, 6);
+       const end = today;
        const days = eachDayOfInterval({ start, end });
 
-       // Mood Colors Mapping (0-7) matching DailyLogWizard
+       // Mood Colors Mapping (0-7)
        const moodColors = [
            'bg-yellow-100 text-yellow-800 border-yellow-200', // Happy
            'bg-pink-100 text-pink-800 border-pink-200',     // Fantastic
@@ -127,7 +141,7 @@ const Dashboard = () => {
        const moodEmojis = ['🙂', '🤩', '🥰', '😐', '😫', '😴', '😠', '😢'];
 
       return (
-          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4 pt-2 px-1">
+          <div ref={scrollRef} className="flex gap-4 overflow-x-auto custom-scrollbar pb-6 pt-2 px-1 scroll-smooth snap-x">
               {days.map((date) => {
                   const dateStr = format(date, 'yyyy-MM-dd');
                   const log = logs[dateStr];
@@ -137,62 +151,87 @@ const Dashboard = () => {
                   const isMissed = !hasLog && !isUpcoming && !isCurrentDay;
                   
                   // Determine Styles
-                  let cardStyle = "bg-white text-gray-800 border-gray-100 hover:border-gray-300"; // Default Empty
+                  let cardStyle = "";
                   
-                  if (isUpcoming) {
-                      cardStyle = "bg-gray-50 text-gray-300 border-transparent cursor-not-allowed opacity-60";
+                  if (isCurrentDay) {
+                       if (hasLog) {
+                           // Today + Logged: Highlighted Green Indication
+                           cardStyle = isDarkMode 
+                            ? "bg-emerald-900/40 text-white border-2 border-emerald-500 shadow-lg shadow-emerald-500/20 scale-105 z-10" 
+                            : "bg-emerald-50 text-emerald-950 border-2 border-emerald-500 shadow-lg shadow-emerald-200 scale-105 z-10";
+                       } else {
+                           // Today + No Log: High Contrast Call-to-Action
+                           cardStyle = isDarkMode 
+                            ? "bg-white text-black shadow-xl shadow-white/10 ring-2 ring-white scale-105 z-10" 
+                            : "bg-black text-white shadow-xl shadow-black/20 ring-2 ring-black scale-105 z-10";
+                       }
+                  } else if (isUpcoming) {
+                      // Upcoming - Ghost & Frozen
+                      cardStyle = isDarkMode
+                        ? "bg-gray-900/30 border border-gray-800 border-dashed opacity-30 pointer-events-none grayscale"
+                        : "bg-white/40 border border-gray-200 border-dashed opacity-30 pointer-events-none grayscale";
                   } else if (hasLog) {
-                      // Use Mood Color or Fallback to generic logged style
-                      const moodIdx = log.mood;
-                      if (moodIdx !== undefined && moodColors[moodIdx]) {
-                          cardStyle = moodColors[moodIdx] + " shadow-sm";
-                      } else {
-                          // Logged but no mood? (Shouldn't happen often)
-                          cardStyle = "bg-purple-100 text-purple-900 border-purple-200";
-                      }
+                      // Logged (Past) - Light Green
+                      cardStyle = isDarkMode
+                        ? "bg-emerald-900/20 text-emerald-300 border border-emerald-800/50"
+                        : "bg-emerald-50 text-emerald-900 border border-emerald-200";
                   } else if (isMissed) {
-                      cardStyle = "bg-red-50 text-red-400 border-red-100";  // Missed Style
-                  } else if (isCurrentDay) {
-                       cardStyle = "bg-gray-900 text-white border-transparent shadow-xl shadow-gray-200"; // Active 'Add' state
+                      // Missed (Past) - Light Red
+                      cardStyle = isDarkMode
+                         ? "bg-red-900/20 text-red-500 border border-red-800/50"
+                         : "bg-red-50 text-red-600 border border-red-200";
+                  } else {
+                        // Empty Fallback
+                        cardStyle = isDarkMode
+                        ? "bg-gray-800 text-gray-500 border border-gray-700"
+                        : "bg-white text-gray-400 border border-gray-100";
                   }
 
                   return (
                       <div 
                         key={dateStr}
                         onClick={() => !isUpcoming && handleOpenLog(dateStr)}
-                        className={`flex-shrink-0 w-28 p-4 rounded-[1.5rem] border-2 transition-all relative overflow-hidden ${cardStyle} ${!isUpcoming ? 'cursor-pointer active:scale-95' : ''}`}
+                        className={`flex-shrink-0 w-28 p-4 rounded-[1.5rem] border-2 transition-all relative overflow-hidden snap-center ${cardStyle} ${!isUpcoming ? 'cursor-pointer active:scale-95' : 'cursor-not-allowed'}`}
                       >
-                          <div className="text-[10px] font-bold opacity-70 uppercase tracking-widest mb-1">
+                          <div className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isCurrentDay ? 'opacity-80' : 'opacity-60'}`}>
                               {isCurrentDay ? 'Today' : format(date, 'EEE')}
                           </div>
                           <div className="text-xl font-black mb-3 leading-none">
                               {format(date, 'd')}
                           </div>
                           
-                          {/* Content */}
+                           {/* Content */}
                           {hasLog ? (
                               <div className="flex flex-col gap-1">
                                   <div className="text-3xl">
                                       {moodEmojis[log.mood] || '•'}
                                   </div>
                                    <div className="flex items-center gap-2 opacity-80 mt-1">
-                                      <div className="flex items-center gap-0.5">
-                                        <FiMoon size={10} className="fill-current" />
-                                        <span className="font-bold text-xs">{log.sleep}h</span>
-                                      </div>
-                                      <div className="flex items-center gap-0.5">
-                                        <FiStar size={10} className="fill-current" />
-                                        <span className="font-bold text-xs">{log.rating}</span>
-                                      </div>
+                                      {log.sleep && (
+                                          <div className="flex items-center gap-0.5">
+                                            <FiMoon size={10} className="fill-current" />
+                                            <span className="font-bold text-xs">{log.sleep}h</span>
+                                          </div>
+                                      )}
+                                      {log.rating && (
+                                          <div className="flex items-center gap-0.5">
+                                            <FiStar size={10} className="fill-current" />
+                                            <span className="font-bold text-xs">{log.rating}</span>
+                                          </div>
+                                      )}
                                   </div>
                               </div>
                           ) : (
                               !isUpcoming && (
                                 <div className="flex flex-col justify-end h-10 opacity-50">
-                                   <span className="text-[10px] font-bold leading-tight">
+                                   <span className="text-[10px] font-bold leading-tight uppercase tracking-wide">
                                        {isMissed ? 'Missed' : 'Log Now'}
                                    </span>
-                                   {isMissed && <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-1" />}
+                                   {isMissed && (
+                                       <div className="flex mt-1">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-current" />
+                                       </div>
+                                   )}
                                 </div>
                               )
                           )}
@@ -203,55 +242,7 @@ const Dashboard = () => {
       );
   };
 
-  const renderMonthCalendar = () => {
-    const today = new Date();
-    const start = startOfMonth(today);
-    const end = endOfMonth(today);
-    const days = eachDayOfInterval({ start, end });
-    const startDayOfWeek = getDay(start); // 0 = Sunday
 
-    return (
-        <div className="space-y-4">
-             <div className="grid grid-cols-7 mb-2">
-                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-                     <div key={i} className="text-center text-xs font-bold text-gray-300">
-                        {d}
-                     </div>
-                 ))}
-             </div>
-             <div className="grid grid-cols-7 gap-y-4 gap-x-2">
-                {[...Array(startDayOfWeek)].map((_, i) => <div key={`empty-${i}`} />)}
-                
-                {days.map(day => {
-                    const dayStr = format(day, 'yyyy-MM-dd');
-                    const hasLog = !!logs[dayStr];
-                    const isCurrentDay = isSameDay(day, new Date());
-                    
-                    return (
-                        <button 
-                            key={dayStr}
-                            onClick={() => handleOpenLog(dayStr)}
-                            className="flex flex-col items-center gap-1 relative group"
-                        >
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                                isCurrentDay 
-                                ? 'bg-black text-white shadow-md'
-                                : hasLog 
-                                    ? 'bg-white text-gray-900 border border-gray-100'
-                                    : 'text-gray-400 hover:bg-gray-50'
-                            }`}>
-                                {format(day, 'd')}
-                            </div>
-                            {hasLog && (
-                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 absolute -bottom-1" />
-                            )}
-                        </button>
-                    );
-                })}
-             </div>
-        </div>
-    );
-  };
 
   return (
     <div className={`min-h-screen pb-24 md:pb-8 pt-6 px-6 relative overflow-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'bg-black text-white' : 'bg-[#FDFBF9] text-gray-900'}`}>
@@ -290,15 +281,23 @@ const Dashboard = () => {
         
         {/* Top Header similar to image */}
         <div className="flex justify-between items-start">
-            <button className={`p-2 -ml-2 transition-colors ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                <FiChevronLeft size={24} />
-            </button>
-            <button 
-                onClick={toggleTheme}
-                className={`p-2 rounded-full shadow-sm transition-colors cursor-pointer ${isDarkMode ? 'bg-gray-800 text-yellow-300' : 'bg-white text-gray-900'}`}
-            >
-                {isDarkMode ? <FiMoon size={20} /> : <FiSun size={20} />}
-            </button>
+            <div className="p-2 -ml-2">
+                {/* Space holder for removed back button or logo can go here */}
+            </div>
+            <div className="flex items-center gap-3">
+                 <button 
+                    onClick={() => toast('No new notifications', { icon: '🔔' })}
+                    className={`p-2 rounded-full shadow-sm transition-colors cursor-pointer ${isDarkMode ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-white text-gray-900 hover:bg-gray-50'}`}
+                >
+                    <FiBell size={20} />
+                </button>
+                <button 
+                    onClick={toggleTheme}
+                    className={`p-2 rounded-full shadow-sm transition-colors cursor-pointer ${isDarkMode ? 'bg-gray-800 text-yellow-300' : 'bg-white text-gray-900'}`}
+                >
+                    {isDarkMode ? <FiMoon size={20} /> : <FiSun size={20} />}
+                </button>
+            </div>
         </div>
 
         {/* Date & Title */}
@@ -307,6 +306,10 @@ const Dashboard = () => {
                 <span>Today, {format(new Date(), 'MMMM d')}</span>
                  {getTimeIcon()}
             </div>
+            
+            <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                Hello, {currentUser?.fullName || currentUser?.displayName || 'Traveler'}
+            </p>
             
             <h1 className={`text-3xl font-black tracking-tight pt-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 How was your day?
@@ -320,6 +323,15 @@ const Dashboard = () => {
         <div className="space-y-4">
              <div className="flex justify-between items-center px-1">
                  <h3 className={`text-base font-bold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>This Week</h3>
+                 <button 
+                    onClick={() => setIsCalendarOpen(true)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 ${
+                        isDarkMode ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                 >
+                    <FiCalendar size={12} />
+                    View All
+                 </button>
             </div>
             {renderRecentDays()}
         </div>
@@ -329,13 +341,13 @@ const Dashboard = () => {
              <button 
                 onClick={() => handleOpenLog(todayStr)}
                 className={`w-full py-4 rounded-[1.5rem] font-bold shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all flex items-center justify-center gap-2 text-lg cursor-pointer ${
-                    isDarkMode ? 'bg-white text-black shadow-none' : 'bg-black text-white shadow-gray-200'
+                    isDarkMode ? 'bg-gray-700 text-white shadow-none' : 'bg-black text-white shadow-gray-200'
                 }`}
             >
                 <div>
                      <span className="block">Log Today's Entry</span>
                 </div>
-                <div className={`p-1 rounded-full ${isDarkMode ? 'bg-black text-white' : 'bg-white text-black'}`}>
+                <div className={`p-1 rounded-full ${isDarkMode ? 'bg-gray-600 text-white' : 'bg-white text-black'}`}>
                     <FiPlus />
                 </div>
             </button>
@@ -448,6 +460,19 @@ const Dashboard = () => {
                 ...prev,
                 [newLog.date]: newLog
             }));
+        }}
+      />
+      
+      <CalendarModal 
+        isOpen={isCalendarOpen} 
+        onClose={() => setIsCalendarOpen(false)} 
+        logs={logs}
+        onSelectDate={(date) => {
+            // Check if future date? CalendarModal already handles selection logic but maybe prevent future?
+            // Existing handleOpenLog handles state.
+            // isFuture check is good UX but handleOpenLog handles opening modal directly.
+            // Let's just open it.
+            handleOpenLog(date);
         }}
       />
     </div>
