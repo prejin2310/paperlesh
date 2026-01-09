@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
 import Layout from './components/layout/Layout';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
@@ -11,11 +12,16 @@ import Register from './pages/Register';
 import SetMpin from './pages/SetMpin';
 import VerifyMpin from './pages/VerifyMpin';
 
+const RootRoute = () => {
+  const { currentUser } = useAuth();
+  return currentUser ? <Navigate to="/dashboard" replace /> : <Landing />;
+};
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<RootRoute />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/set-mpin" element={<SetMpin />} />

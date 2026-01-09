@@ -1,4 +1,4 @@
-const CACHE_NAME = 'journiq-v2';
+const CACHE_NAME = 'journiq-v3';
 const urlsToCache = [
   '/',
   '/index.html',
