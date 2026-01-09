@@ -1,4 +1,4 @@
-const CACHE_NAME = 'journiq-v3';
+const CACHE_NAME = 'journiq-v4';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -28,8 +28,26 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
-  );
+  // Network-First strategy for HTML/Navigation requests
+  // This ensures the user always gets the latest index.html (with new JS hashes)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        })
+    );
+  } else {
+    // Cache-First strategy for static assets (images, css, js)
+    event.respondWith(
+      caches.match(event.request)
+        .then(response => response || fetch(event.request))
+    );
+  }
 });

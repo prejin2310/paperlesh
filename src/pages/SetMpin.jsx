@@ -137,7 +137,7 @@ const SetMpin = () => {
             // Mark session as verified
             verifySession();
 
-            navigate('/dashboard');
+            navigate('/install-app');
         } catch (err) {
             console.error(err);
             setError('Failed to save MPIN.');
