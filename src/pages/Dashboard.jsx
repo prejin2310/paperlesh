@@ -20,7 +20,8 @@ import {
 } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useInstallPrompt } from '../context/InstallContext';
 import { 
   FiEdit2, 
   FiPlus, 
@@ -31,7 +32,8 @@ import {
   FiChevronLeft,
   FiBell,
   FiChevronRight,
-  FiCalendar
+  FiCalendar,
+  FiHelpCircle
 } from 'react-icons/fi';
 import { collection, query, where, getDocs, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -39,6 +41,7 @@ import DailyLogWizard from '../components/dashboard/DailyLogWizard';
 import CalendarModal from '../components/dashboard/CalendarModal';
 import QuickAccessManager from '../components/dashboard/QuickAccessManager';
 import QuickToolModal from '../components/dashboard/QuickToolModal';
+import AppGuide from '../components/dashboard/AppGuide';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -55,6 +58,24 @@ const Dashboard = () => {
   const { currentUser } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
 
+  // Install Prompt Logic
+  const navigate = useNavigate();
+  const { isInstalled } = useInstallPrompt();
+
+  useEffect(() => {
+    // If not in standalone mode (not installed PWA), prompt install
+    if (isInstalled === false) {
+         const hasSeenPrompt = sessionStorage.getItem('install_prompt_seen');
+         if (!hasSeenPrompt) {
+             const timer = setTimeout(() => {
+                 navigate('/install-app');
+                 sessionStorage.setItem('install_prompt_seen', 'true');
+             }, 3000); // 3s delay
+             return () => clearTimeout(timer);
+         }
+    }
+  }, [isInstalled, navigate]);
+
   // Time of Day Logic for Hero Section
   const [timeOfDay, setTimeOfDay] = useState('morning');
   
@@ -62,6 +83,7 @@ const Dashboard = () => {
   const [quickLinks, setQuickLinks] = useState(DEFAULT_QUICK_LINKS);
   const [customTools, setCustomTools] = useState([]); // User defined tools
   const [isQuickManagerOpen, setIsQuickManagerOpen] = useState(false);
+  const [isAppGuideOpen, setIsAppGuideOpen] = useState(false);
   const [activeQuickTool, setActiveQuickTool] = useState(null);
 
   useEffect(() => {
@@ -376,6 +398,14 @@ const Dashboard = () => {
                     >
                         <FiBell size={18} />
                     </button>
+                    
+                   <button 
+                        onClick={() => setIsAppGuideOpen(true)}
+                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-500 dark:hover:text-blue-400 transition-all shadow-sm"
+                        aria-label="Help Guide"
+                    >
+                        <FiHelpCircle size={18} />
+                   </button>
               </div>
           </div>
       );
@@ -577,12 +607,17 @@ const Dashboard = () => {
                                     <div className={`${card.bg} ${baseStyle} p-8 text-amber-900 dark:text-amber-50`}>
                                          <div className="relative z-10 flex flex-col justify-between h-full">
                                             <div>
-                                                <h3 className="text-3xl font-black text-gray-900 dark:text-white mb-3 leading-tight">
-                                                     {timeOfDay === 'morning' ? "Let's start your day" : timeOfDay === 'evening' ? "Wrap up your day" : "How is your day?"}
+                                                <h3 className="text-3xl font-black text-gray-900 dark:text-white mb-2 leading-tight">
+                                                     {timeOfDay === 'morning' ? "Let's start your day" : "How is your day?"}
                                                 </h3>
-                                                <p className="text-gray-800/80 dark:text-gray-100/90 font-medium text-lg max-w-[80%]">
-                                                     {timeOfDay === 'morning' ? "Begin with mindful morning reflections." : "Reflect on your moments and achievements."}
+                                                <p className="text-gray-800/80 dark:text-gray-100/90 font-bold text-lg max-w-[90%] leading-tight mb-1">
+                                                     {timeOfDay === 'morning' ? "Begin with mindful morning reflections." : "Capture your moments, habits & mood."}
                                                 </p>
+                                                {timeOfDay !== 'morning' && (
+                                                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300 opacity-90">
+                                                        Enter your today journal
+                                                    </p>
+                                                )}
                                             </div>
                                             
                                             <div className="flex items-center gap-2">
@@ -734,7 +769,7 @@ const Dashboard = () => {
                                 const MOOD_NAMES = ['Happy', 'Fantastic', 'Romantic', 'Normal', 'Stress', 'Tired', 'Angry', 'Sad'];
                                 
                                 content = (
-                                     <div className={`bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 ${baseStyle} flex flex-col`}>
+                                     <div className={`bg-gradient-to-br from-[#FFFBF0] to-[#FFF0E0] dark:from-gray-800 dark:to-gray-900 border border-orange-100 dark:border-gray-700 ${baseStyle} flex flex-col`}>
                                         
                                         {/* Header */}
                                         <div className="px-6 pt-6 pb-2 flex justify-between items-center">
@@ -1009,6 +1044,11 @@ const Dashboard = () => {
         }}
       />
       
+      <AppGuide 
+           isOpen={isAppGuideOpen}
+           onClose={() => setIsAppGuideOpen(false)}
+      />
+
       <CalendarModal
         isOpen={isCalendarOpen}
         onClose={() => setIsCalendarOpen(false)}

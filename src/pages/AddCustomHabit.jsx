@@ -40,10 +40,25 @@ const AddCustomHabit = () => {
     const handleSave = () => {
         if (!name.trim()) return toast.error("Please name your habit");
         
-        // Save logic to Firestore would go here
-        // For now, we simulate success
+        // Save logic to LocalStorage (Synched with Track.jsx)
+        const saved = localStorage.getItem('user_tracked_habits');
+        let currentHabits = [];
+        if (saved) {
+            try {
+                currentHabits = JSON.parse(saved);
+            } catch (e) {
+                currentHabits = [];
+            }
+        }
+
+        if (currentHabits.includes(name.trim())) {
+            return toast.error("Habit already exists!");
+        }
+
+        const newHabits = [...currentHabits, name.trim()];
+        localStorage.setItem('user_tracked_habits', JSON.stringify(newHabits));
         
-        toast.success("Custom Tracker Created!");
+        toast.success("Custom Habit Created!");
         navigate(-1);
     };
 

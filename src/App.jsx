@@ -15,6 +15,7 @@ import VerifyMpin from './pages/VerifyMpin';
 import InstallApp from './pages/InstallApp';
 import AddCustomHabit from './pages/AddCustomHabit';
 import NotFound from './pages/NotFound';
+import Onboarding from './pages/Onboarding';
 
 const RootRoute = () => {
   const { currentUser } = useAuth();
@@ -32,6 +33,7 @@ function App() {
           <Route path="/set-mpin" element={<SetMpin />} />
           <Route path="/verify-mpin" element={<VerifyMpin />} />
           <Route path="/install-app" element={<InstallApp />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           
           {/* Protected Routes (wrapped in Layout) */}
           <Route element={<Layout />}>
