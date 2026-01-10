@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { FiX, FiCheck, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -160,8 +161,8 @@ const DailyLogModal = ({ isOpen, onClose, date, initialData, onSave }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center pointer-events-none">
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto transition-opacity" 
         onClick={onClose}
@@ -533,7 +534,8 @@ const DailyLogModal = ({ isOpen, onClose, date, initialData, onSave }) => {
             )}
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

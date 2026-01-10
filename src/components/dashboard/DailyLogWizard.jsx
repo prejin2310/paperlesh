@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { FiX, FiCheck, FiChevronRight, FiChevronLeft, FiStar, FiSun, FiCloud, FiCloudRain, FiCloudLightning, FiDroplet, FiWind, FiThermometer, FiShoppingBag, FiPlus, FiMinus, FiActivity } from 'react-icons/fi';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -7,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 const MOODS = [
-    { emoji: '🙂', label: 'Happy' },
+    { emoji: '😊', label: 'Happy' },
     { emoji: '🤩', label: 'Fantastic' },
     { emoji: '🥰', label: 'Romantic' },
     { emoji: '😐', label: 'Normal' },
@@ -28,19 +29,33 @@ const WEATHER_OPTIONS = [
 
 const STEPS_OPTIONS = ['<1000', '1k-2.5k', '2.5k-5k', '5k-10k', '>10k'];
 
-const BASE_HABITS = ['Workout', 'Skin Care', 'Wake up early', 'Meditation'];
+// Unified Base Habits matching Track.jsx
+const BASE_HABITS = ['Drink water', 'Journaling', 'Workout', 'Reading', 'Eat Healthy', 'Skin Care', 'Wake up early', 'Meditation'];
 
 const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [showStepsDropdown, setShowStepsDropdown] = useState(false);
-  const totalSteps = 3;
-  
-  // Dynamic Habits based on Gender
-  const habitsList = currentUser?.gender === 'Female' 
-    ? [...BASE_HABITS, 'Periods'] 
-    : BASE_HABITS;
+  const totalSteps = 4; // Increased to 4 to accommodate Habits step
+
+  // State for Habits
+  const [availableHabits, setAvailableHabits] = useState([]);
+
+  useEffect(() => {
+    // Load Habits (Base + LocalStorage Custom)
+    let habits = [...BASE_HABITS];
+    if (currentUser?.gender === 'Female') habits.push('Periods');
+
+    const saved = localStorage.getItem('user_tracked_habits');
+    if (saved) {
+        try {
+             const parsed = JSON.parse(saved);
+             habits = [...new Set([...habits, ...parsed])];
+        } catch(e) {}
+    }
+    setAvailableHabits(habits);
+  }, [currentUser]);
 
   const [formData, setFormData] = useState({
     note: '',
@@ -53,6 +68,7 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
     
     // Habits & Stats
     habits: [],
+    customHabits: [], // Add storage for custom habits
     water: 0, 
     screenTime: '',
     longNote: '',
@@ -97,6 +113,7 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
             weather: initialData.weather || [],
             
             habits: initialData.habits || [],
+            customHabits: initialData.customHabits || [],
             water: initialData.water || 0,
             screenTime: initialData.screenTime || '',
             longNote: initialData.longNote || '',
@@ -215,8 +232,8 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center pointer-events-none">
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto transition-opacity" 
         onClick={onClose}
@@ -227,15 +244,16 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="bg-[#FDFBF9] dark:bg-gray-900 w-full max-w-xl md:rounded-[2rem] rounded-t-[2rem] shadow-2xl pointer-events-auto h-[90vh] flex flex-col overflow-hidden z-50"
+        className="bg-[#FDFBF9] dark:bg-gray-900 w-full max-w-xl md:rounded-[2rem] rounded-t-[2rem] shadow-2xl pointer-events-auto h-[90vh] flex flex-col overflow-hidden relative z-[10000]"
       >
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-20">
             <div>
                  <h2 className="text-xl font-black text-gray-900 dark:text-white">
                     {step === 1 && "Daily Overview"}
-                    {step === 2 && "Habits & Health"}
-                    {step === 3 && "Reflections"}
+                    {step === 2 && "Activities & Habits"}
+                    {step === 3 && "Daily Questions"}
+                    {step === 4 && "Reflections"}
                  </h2>
                  <p className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest">Step {step} of {totalSteps}</p>
             </div>
@@ -424,79 +442,64 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                         exit={{ x: -20, opacity: 0 }}
                         className="space-y-6"
                     >
-                         {/* Default Habits */}
-                        <div className="space-y-3">
-                            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Which habits did you complete?</h3>
-                            <div className="grid grid-cols-2 gap-3">
-                                {habitsList.map(habit => (
-                                    <button
+                         {/* Habits - Unified List */}
+                         <div className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] shadow-sm space-y-4">
+                             <div className="flex items-center gap-2">
+                                <span className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-500 rounded-xl">
+                                    <FiCheck size={18} />
+                                </span>
+                                <h3 className="font-bold text-gray-900 dark:text-white">Habits & Routine</h3>
+                             </div>
+                             
+                             <p className="text-xs text-gray-400 dark:text-gray-500">Includes habits from your tracker.</p>
+
+                             <div className="grid grid-cols-2 gap-3">
+                                 {availableHabits.map((habit) => (
+                                     <button
                                         key={habit}
                                         onClick={() => toggleHabit(habit)}
-                                        className={`p-4 rounded-2xl flex items-center justify-between font-bold text-sm transition-all ${
+                                        className={`p-3 rounded-xl border-2 flex items-center gap-3 transition-all ${
                                             formData.habits.includes(habit)
-                                            ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-200'
-                                            : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                            ? 'bg-indigo-500 border-indigo-500 text-white shadow-lg shadow-indigo-200 dark:shadow-none'
+                                            : 'bg-transparent border-gray-100 dark:border-gray-700 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600'
                                         }`}
-                                    >
-                                        {habit}
-                                        {formData.habits.includes(habit) && <FiCheck />}
-                                    </button>
-                                ))}
-                            </div>
-                            <button className="text-xs font-bold text-indigo-500 hover:text-indigo-600 block w-full text-center py-2">
-                                + Add/Edit Habits in Profile
-                            </button>
-                        </div>
-
-                        {/* Water & Screen Time */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm">
-                                <label className="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2 block">How many glasses of water?</label>
-                                <div className="flex items-center justify-between">
-                                    <button 
-                                        onClick={() => setFormData(p => ({ ...p, water: Math.max(0, p.water - 1) }))}
-                                        className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-500 flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                                    >
-                                        <FiMinus size={14} />
-                                    </button>
-                                    <div className="text-center">
-                                        <span className="text-xl font-black text-gray-900 dark:text-white">{formData.water}</span>
-                                        <div className="text-[10px] text-gray-400 dark:text-gray-500 font-bold">Glasses</div>
-                                    </div>
-                                    <button 
-                                        onClick={() => setFormData(p => ({ ...p, water: p.water + 1 }))}
-                                        className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-500 flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                                    >
-                                        <FiPlus size={14} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm">
-                                <label className="text-xs font-bold uppercase tracking-widest text-purple-400 mb-2 block">Screen Time Duration?</label>
-                                <div className="relative mt-2">
-                                    <input 
-                                        type="number"
-                                        value={formData.screenTime}
-                                        onChange={e => setFormData(prev => ({ ...prev, screenTime: e.target.value }))}
-                                        className="w-full bg-gray-50 dark:bg-gray-900 rounded-xl p-3 font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900 text-center"
-                                        placeholder="0"
-                                    />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 dark:text-gray-500">HRS</span>
-                                </div>
-                            </div>
-                        </div>
-
-                         {/* Long Note */}
-                         <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Any special thoughts for today?</label>
-                            <textarea
-                                value={formData.longNote}
-                                onChange={e => setFormData(prev => ({ ...prev, longNote: e.target.value }))}
-                                placeholder="Pour your thoughts here..."
-                                className="w-full bg-white dark:bg-gray-800 border-none rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 outline-none resize-none h-40 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white leading-relaxed"
-                            />
+                                     >
+                                        <div className={`w-5 h-5 rounded-md flex items-center justify-center border ${
+                                            formData.habits.includes(habit) ? 'border-white bg-white/20' : 'border-gray-300'
+                                        }`}>
+                                            {formData.habits.includes(habit) && <FiCheck size={12} />}
+                                        </div>
+                                        <span className="text-sm font-bold truncate">{habit}</span>
+                                     </button>
+                                 ))}
+                             </div>
                          </div>
+                    
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                             {/* Water */}
+                             <div className="bg-white dark:bg-gray-800 p-4 rounded-[2rem] shadow-sm space-y-3 flex flex-col items-center justify-center">
+                                <div className="text-cyan-500 bg-cyan-50 dark:bg-cyan-900/20 p-3 rounded-full mb-1"><FiDroplet size={24} /></div>
+                                <div className="flex items-center gap-3">
+                                    <button onClick={() => setFormData(p => ({ ...p, water: Math.max(0, p.water - 1) }))} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center font-bold text-gray-500 hover:bg-cyan-100 hover:text-cyan-600 transition-colors">-</button>
+                                    <span className="text-xl font-black w-6 text-center">{formData.water}</span>
+                                    <button onClick={() => setFormData(p => ({ ...p, water: p.water + 1 }))} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center font-bold text-gray-500 hover:bg-cyan-100 hover:text-cyan-600 transition-colors">+</button>
+                                </div>
+                                <span className="text-[10px] uppercase font-bold text-gray-400">Glasses</span>
+                             </div>
+
+                             {/* Sleep */}
+                             <div className="bg-white dark:bg-gray-800 p-4 rounded-[2rem] shadow-sm space-y-3 flex flex-col items-center justify-center">
+                                <div className="text-purple-500 bg-purple-50 dark:bg-purple-900/20 p-3 rounded-full mb-1"><FiWind size={24} /></div>
+                                <div className="flex items-center gap-3">
+                                    <button onClick={() => setFormData(p => ({ ...p, sleep: Math.max(0, p.sleep - 0.5) }))} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center font-bold text-gray-500 hover:bg-purple-100 hover:text-purple-600 transition-colors">-</button>
+                                    <span className="text-xl font-black w-10 text-center">{formData.sleep}</span>
+                                    <button onClick={() => setFormData(p => ({ ...p, sleep: p.sleep + 0.5 }))} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center font-bold text-gray-500 hover:bg-purple-100 hover:text-purple-600 transition-colors">+</button>
+                                </div>
+                                <span className="text-[10px] uppercase font-bold text-gray-400">Hours Sleep</span>
+                             </div>
+                        </div>
+
                     </motion.div>
                 )}
 
@@ -506,7 +509,7 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                         initial={{ x: 20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         exit={{ x: -20, opacity: 0 }}
-                        className="space-y-8"
+                        className="space-y-6"
                     >
                          {/* Shopping */}
                          <div className="space-y-4">
@@ -634,6 +637,27 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
 
                     </motion.div>
                 )}
+
+                {step === 4 && (
+                    <motion.div 
+                        key="step4"
+                        initial={{ x: 20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: -20, opacity: 0 }}
+                        className="space-y-6"
+                    >
+                         {/* Long Note */}
+                         <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Any special thoughts for today?</label>
+                            <textarea
+                                value={formData.longNote}
+                                onChange={e => setFormData(prev => ({ ...prev, longNote: e.target.value }))}
+                                placeholder="Pour your thoughts here..."
+                                className="w-full bg-white dark:bg-gray-800 border-none rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 outline-none resize-none h-60 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white leading-relaxed"
+                            />
+                         </div>
+                    </motion.div>
+                )}
             </AnimatePresence>
         </div>
 
@@ -666,7 +690,8 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
             )}
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

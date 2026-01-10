@@ -7,9 +7,9 @@ service cloud.firestore {
       // Allow user to access their own user document
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      // Explicitly allow user to access their logs subcollection
-      match /logs/{logId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow user to access any subcollection (logs, monthly_journals, tools, etc.)
+      match /{subcollection=**} {
+         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
     

@@ -1,35 +1,69 @@
-import { NavLink } from 'react-router-dom';
-import { FiHome, FiGrid, FiCalendar, FiList, FiUser, FiLogOut } from 'react-icons/fi';
+import { NavLink, useLocation } from 'react-router-dom';
+import { FiHome, FiCheckSquare, FiGrid, FiBook, FiUser, FiLogOut, FiPlus, FiCalendar, FiActivity } from 'react-icons/fi';
 
 const Navbar = () => {
+    const location = useLocation();
+    
+    // Check if we are on the dashboard
+    const isDashboard = location.pathname === '/dashboard' && !location.search.includes('action');
+
   const navItems = [
-    { to: '/dashboard', icon: <FiHome className="w-6 h-6 md:w-5 md:h-5" />, label: 'Home' },
-    { to: '/track', icon: <FiGrid className="w-6 h-6 md:w-5 md:h-5" />, label: 'Track' },
-    { to: '/month', icon: <FiCalendar className="w-6 h-6 md:w-5 md:h-5" />, label: 'Month' },
-    { to: '/logs', icon: <FiList className="w-6 h-6 md:w-5 md:h-5" />, label: 'Logs' },
-    { to: '/profile', icon: <FiUser className="w-6 h-6 md:w-5 md:h-5" />, label: 'Profile' },
+    { to: '/dashboard', icon: <FiHome size={22} />, label: 'Home' },
+    { to: '/track', icon: <FiActivity size={22} />, label: 'Habits' },
+    { to: '/month', icon: <FiCalendar size={22} />, label: 'Month' },
+    { to: '/logs', icon: <FiGrid size={22} />, label: 'Journal' },
+    { to: '/profile', icon: <FiUser size={22} />, label: 'Profile' },
   ];
 
   return (
     <>
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-6 left-6 right-6 bg-black dark:bg-gray-900 border dark:border-gray-800 text-white dark:text-gray-300 rounded-full shadow-2xl py-4 z-50">
-        <div className="flex justify-around items-center">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex flex-col items-center justify-center p-2 rounded-full transition-all duration-300 ${
-                  isActive
-                    ? 'bg-white dark:bg-gray-800 text-black dark:text-white translate-y-[-4px] shadow-lg scale-110'
-                    : 'text-gray-400 dark:text-gray-500 hover:text-white dark:hover:text-gray-300'
-                }`
-              }
-            >
-              {item.icon}
-            </NavLink>
-          ))}
+      {/* Absolute FAB - Custom Add */}
+      {isDashboard && (
+          <div className="md:hidden fixed bottom-32 right-6 z-50">
+                <NavLink
+                    to="/add-habit"
+                    className="flex flex-col items-center justify-center"
+                >
+                    <div className="w-14 h-14 bg-[#FFB800] rounded-full flex items-center justify-center text-white shadow-xl shadow-orange-300/40 transform transition-all active:scale-90 hover:scale-105 border-4 border-white/20 dark:border-black/20 backdrop-blur-sm">
+                        <FiPlus size={26} />
+                    </div>
+                </NavLink>
+          </div>
+      )}
+
+      {/* Mobile Bottom Navigation - Floating Glass Design */}
+      <nav className="md:hidden fixed bottom-6 left-6 right-6 z-50 h-[72px]">
+         <div className="absolute inset-0 bg-white/80 dark:bg-[#1a1a1a]/80 backdrop-blur-xl border border-white/40 dark:border-white/5 rounded-[2.5rem] shadow-2xl shadow-gray-200/50 dark:shadow-none"></div>
+         
+         <div className="relative z-10 h-full flex justify-between items-center px-2"> 
+            {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === '/dashboard'} // Only exact match for dashboard home
+                  className={({ isActive }) =>
+                    `flex-1 h-full flex flex-col items-center justify-center gap-1 transition-all duration-300 rounded-3xl relative group`
+                  }
+                >
+                   {({ isActive }) => (
+                      <>
+                        {/* Active Indicator Background */}
+                        {isActive && (
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-black dark:bg-white rounded-full transition-all duration-300 shadow-md"></div>
+                        )}
+                        
+                        <div className={`relative z-10 transition-all duration-300 ${isActive ? 'text-white dark:text-black translate-y-0' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'}`}>
+                            {item.icon}
+                        </div>
+                        
+                        {/* Optional: Label (Hidden on this minimal design or show only active?) */}
+                        {/* Let's keep it minimal icon-only for the floating look, or maybe small dot for active? 
+                            The user likes "Modern". Icon inside circle is very modern. 
+                        */}
+                      </>
+                   )}
+                </NavLink>
+              ))}
         </div>
       </nav>
 

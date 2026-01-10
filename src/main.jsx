@@ -1,4 +1,3 @@
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Toaster } from 'react-hot-toast'
 import './index.css'
@@ -7,14 +6,12 @@ import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
     <AuthProvider>
       <ThemeProvider>
         <Toaster position="top-center" reverseOrder={false} />
         <App />
       </ThemeProvider>
-    </AuthProvider>
-  </StrictMode>,
+    </AuthProvider>,
 )
 
 if ('serviceWorker' in navigator) {

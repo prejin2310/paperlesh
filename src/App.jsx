@@ -13,6 +13,8 @@ import Register from './pages/Register';
 import SetMpin from './pages/SetMpin';
 import VerifyMpin from './pages/VerifyMpin';
 import InstallApp from './pages/InstallApp';
+import AddCustomHabit from './pages/AddCustomHabit';
+import NotFound from './pages/NotFound';
 
 const RootRoute = () => {
   const { currentUser } = useAuth();
@@ -38,7 +40,11 @@ function App() {
             <Route path="/month/:month?" element={<Month />} />
             <Route path="/logs" element={<Logs />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/add-habit" element={<AddCustomHabit />} />
           </Route>
+
+          {/* 404 Catch-all */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </InstallProvider>

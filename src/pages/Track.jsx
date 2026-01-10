@@ -1,193 +1,300 @@
-import { useState, useEffect } from 'react';
-import { eachDayOfInterval, format, startOfYear, endOfYear, getDay } from 'date-fns';
+import { useState, useEffect, useMemo } from 'react';
+import { 
+  format, 
+  startOfWeek, 
+  endOfWeek, 
+  eachDayOfInterval, 
+  isSameDay, 
+  subDays,
+  addDays,
+  isFuture,
+  isToday,
+  startOfMonth,
+  endOfMonth
+} from 'date-fns';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { FiActivity, FiSmile, FiDollarSign, FiTrendingUp, FiFilter, FiChevronLeft } from 'react-icons/fi';
+import { FiPlus, FiMoreHorizontal, FiZap, FiDroplet, FiBook, FiActivity, FiBriefcase, FiMoon } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
+
+// Helper for Habit Configuration (Icon & Color)
+const getHabitConfig = (name) => {
+    const lower = name.toLowerCase();
+    
+    // Default Style
+    let config = { 
+        icon: <FiZap />, 
+        color: 'text-gray-600', 
+        bg: 'bg-gray-100 dark:bg-gray-800', // Box BG
+        fill: 'bg-gray-400' // Checkbox Fill
+    };
+
+    if (lower.includes('workout') || lower.includes('gym') || lower.includes('run')) {
+        config = { icon: <FiActivity />, color: 'text-rose-500', bg: 'bg-rose-100 dark:bg-rose-900/30', fill: 'bg-rose-500' };
+    } else if (lower.includes('water') || lower.includes('drink')) {
+        config = { icon: <FiDroplet />, color: 'text-cyan-500', bg: 'bg-cyan-100 dark:bg-cyan-900/30', fill: 'bg-cyan-400' };
+    } else if (lower.includes('read') || lower.includes('book') || lower.includes('study')) {
+        config = { icon: <FiBook />, color: 'text-amber-500', bg: 'bg-amber-100 dark:bg-amber-900/30', fill: 'bg-amber-400' };
+    } else if (lower.includes('meditation') || lower.includes('mindfulness')) {
+        config = { icon: <FiMoon />, color: 'text-indigo-500', bg: 'bg-indigo-100 dark:bg-indigo-900/30', fill: 'bg-indigo-500' };
+    } else if (lower.includes('work') || lower.includes('job') || lower.includes('code')) {
+        config = { icon: <FiBriefcase />, color: 'text-slate-600', bg: 'bg-slate-200 dark:bg-slate-800', fill: 'bg-slate-500' };
+    } else if (lower.includes('clean') || lower.includes('chore')) {
+        config = { icon: <FiZap />, color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-900/30', fill: 'bg-purple-500' };
+    } else if (lower.includes('skin') || lower.includes('face')) {
+         config = { icon: <FiZap />, color: 'text-pink-500', bg: 'bg-pink-100 dark:bg-pink-900/30', fill: 'bg-pink-400' };
+    }
+
+    return config;
+};
+
+const BASE_HABITS = ['Drink water', 'Journaling', 'Workout', 'Reading', 'Eat Healthy'];
 
 const Track = () => {
     const { currentUser } = useAuth();
-    const { isDarkMode } = useTheme();
-    const [year, setYear] = useState(new Date().getFullYear());
-    const [logData, setLogData] = useState({});
-    const [selectedMetric, setSelectedMetric] = useState('mood');
-    const [stats, setStats] = useState({ totalLogged: 0, bestStreak: 0 });
-  
-    // Fetch yearly data
+    const [loading, setLoading] = useState(true);
+    const [logs, setLogs] = useState({});
+    const [trackedHabits, setTrackedHabits] = useState([]);
+    
+    // We show last 5 days including today
+    const [displayDates, setDisplayDates] = useState([]);
+    
+    // Init Dates
     useEffect(() => {
-      const fetchData = async () => {
-        if (!currentUser) return;
-        try {
-          const startStr = `${year}-01-01`;
-          const endStr = `${year}-12-31`;
-          const logsRef = collection(db, 'users', currentUser.uid, 'logs');
-          const q = query(logsRef, where('date', '>=', startStr), where('date', '<=', endStr));
-          const snap = await getDocs(q);
-          const data = {};
-          let count = 0;
-          snap.forEach(doc => {
-              data[doc.id] = doc.data();
-              count++;
-          });
-          setLogData(data);
-          setStats(prev => ({ ...prev, totalLogged: count }));
-        } catch (err) {
-          console.error(err);
+        const today = new Date();
+        // Generate last 5 days
+        const dates = [];
+        for (let i = 4; i >= 0; i--) {
+            dates.push(subDays(today, i));
         }
-      };
-      fetchData();
-    }, [year, currentUser]);
-  
-    const days = eachDayOfInterval({
-      start: startOfYear(new Date(year, 0, 1)),
-      end: endOfYear(new Date(year, 0, 1))
-    });
-  
-    // Helper to get color based on metric
-    const getColor = (dateStr) => {
-      const log = logData[dateStr];
-      const emptyColor = isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-gray-100';
-      
-      if (!log) return emptyColor;
-  
-      switch (selectedMetric) {
-        case 'mood':
-          // 0:😭, 1:😢, 2:😐, 3:🙂, 4:🤩
-          const moodColors = ['bg-red-300', 'bg-orange-300', 'bg-yellow-300', 'bg-green-300', 'bg-green-500'];
-          return moodColors[log.mood] || (isDarkMode ? 'bg-gray-700' : 'bg-gray-200');
-        case 'rating': 
-           // 1-10
-           if (!log.rating) return (isDarkMode ? 'bg-gray-700' : 'bg-gray-200');
-           return `bg-indigo-${Math.min(Math.ceil(log.rating) * 100, 900)}`;
-        case 'spend':
-            return log.spend ? 'bg-emerald-400' : emptyColor;
-        case 'steps':
-            if(!log.steps) return emptyColor;
-            return log.steps > 10000 ? 'bg-blue-600' : (log.steps > 5000 ? 'bg-blue-300' : 'bg-blue-200');
-        default:
-          return emptyColor;
-      }
+        setDisplayDates(dates);
+    }, []);
+
+    // Load Data
+    useEffect(() => {
+        if (!currentUser || displayDates.length === 0) return;
+        
+        const fetchLogs = async () => {
+            setLoading(true);
+            try {
+                // Fetch a range to cover displayed dates + some buffer for streaks (e.g. current month)
+                // For simplicity, let's just fetch current month or +/- 7 days range
+                const startStr = format(displayDates[0], 'yyyy-MM-dd');
+                const endStr = format(displayDates[displayDates.length - 1], 'yyyy-MM-dd');
+                
+                const logsRef = collection(db, 'users', currentUser.uid, 'logs');
+                // Note: ideally query a larger range for streak calc, but for now simple
+                const startMonth = startOfMonth(new Date());
+                const endMonth = endOfMonth(new Date());
+                
+                const q = query(logsRef, where('date', '>=', format(startMonth, 'yyyy-MM-dd')), where('date', '<=', format(endMonth, 'yyyy-MM-dd')));
+                const snap = await getDocs(q);
+                
+                const data = {};
+                const foundHabits = new Set();
+                
+                snap.forEach(doc => {
+                    const log = doc.data();
+                    data[doc.id] = log;
+                    if (log.habits) log.habits.forEach(h => foundHabits.add(h));
+                });
+                
+                setLogs(data);
+
+                // Merge habits
+                const saved = localStorage.getItem('user_tracked_habits');
+                let initial = [...BASE_HABITS];
+                if (saved) {
+                    try {
+                         const parsed = JSON.parse(saved);
+                         initial = [...new Set([...initial, ...parsed])];
+                    } catch(e){}
+                }
+                
+                // Add found ones
+                const combined = [...new Set([...initial, ...Array.from(foundHabits)])];
+                setTrackedHabits(combined);
+                
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchLogs();
+    }, [currentUser, displayDates]);
+
+
+    const toggleHabit = async (dateStr, habit) => {
+        const existingLog = logs[dateStr] || {};
+        const currentHabits = existingLog.habits || [];
+        const isDone = currentHabits.includes(habit);
+        
+        let newHabits;
+        if (isDone) {
+            newHabits = currentHabits.filter(h => h !== habit);
+        } else {
+            newHabits = [...currentHabits, habit];
+        }
+
+        // Optimistic
+        setLogs(prev => ({
+            ...prev,
+            [dateStr]: { ...existingLog, habits: newHabits } 
+        }));
+
+        try {
+            const logRef = doc(db, 'users', currentUser.uid, 'logs', dateStr);
+            await setDoc(logRef, { habits: newHabits, date: dateStr }, { merge: true });
+        } catch (e) {
+            console.error(e);
+            toast.error("Failed to save");
+        }
     };
 
-    const metrics = [
-        { id: 'mood', label: 'Mood', icon: FiSmile },
-        { id: 'rating', label: 'Rating', icon: FiActivity },
-        { id: 'spend', label: 'Spend', icon: FiDollarSign },
-        { id: 'steps', label: 'Steps', icon: FiTrendingUp },
-    ];
-  
-    return (
-        <div className={`min-h-screen font-sans p-6 md:p-12 relative overflow-hidden pb-32 transition-colors duration-300 ${isDarkMode ? 'bg-black text-white' : 'bg-white text-gray-900'}`}>
-        
-            {/* Background Blooms */}
-            <motion.div 
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }}
-                className={`absolute top-[-20%] left-[-20%] w-[600px] h-[600px] rounded-full blur-[120px] opacity-60 pointer-events-none ${isDarkMode ? 'bg-yellow-900/20' : 'bg-yellow-50'}`}
-            />
-            <motion.div 
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.5 }}
-                className={`absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full blur-[100px] opacity-60 pointer-events-none ${isDarkMode ? 'bg-green-900/20' : 'bg-green-50'}`}
-            />
+    const addNewHabit = () => {
+        const name = prompt("Enter habit name:");
+        if (name && name.trim()) {
+            const newList = [...trackedHabits, name.trim()];
+            setTrackedHabits(newList);
+            localStorage.setItem('user_tracked_habits', JSON.stringify(newList));
+        }
+    };
 
-            <div className="relative z-10 max-w-6xl mx-auto">
+    const calculateStreak = (habit) => {
+        // Simple streak logic: check backwards from Today
+        let streak = 0;
+        const today = new Date();
+        let current = today; // check today first
+        
+        // If not done today, check yesterday to safe-keep streak
+        const todayStr = format(today, 'yyyy-MM-dd');
+        const doneToday = logs[todayStr]?.habits?.includes(habit);
+        
+        if (!doneToday) {
+            current = subDays(today, 1);
+        }
+
+        while(true) {
+            const dStr = format(current, 'yyyy-MM-dd');
+            if (logs[dStr]?.habits?.includes(habit)) {
+                streak++;
+                current = subDays(current, 1);
+            } else {
+                break;
+            }
+            if (streak > 365) break; 
+        }
+        
+        if (streak === 0) return "Start today";
+        return `${streak} day${streak > 1 ? 's' : ''} streak`;
+    };
+
+    return (
+        <div className="min-h-screen relative overflow-hidden bg-white dark:bg-black transition-colors duration-500">
+            
+            <div className="relative z-10 p-6 md:p-8 pb-32 max-w-2xl mx-auto">
+                
                 {/* Header */}
-                 <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-                    <div className="flex items-start gap-4">
-                        <Link to="/dashboard" className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${isDarkMode ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-50 text-gray-900 hover:bg-gray-100'}`}>
-                            <FiChevronLeft size={24} />
-                        </Link>
-                        <div>
-                            <h1 className={`text-4xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Life Grid</h1>
-                            <p className={`font-bold text-lg mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                Your year in pixels.
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <div className={`flex items-center gap-4 p-2 rounded-2xl ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-                         <div className={`px-4 text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                             {year}
-                         </div>
-                         <div className={`h-4 w-[1px] ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
-                         <div className="px-4">
-                            <span className="font-black text-xl">{stats.totalLogged}</span> 
-                            <span className={`text-xs font-bold ml-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>ENTRIES</span>
-                         </div>
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Habits</h1>
                     </div>
                 </div>
 
-                {/* Metric Selector */}
-                <div className="flex gap-3 mb-12 overflow-x-auto pb-2 scrollbar-hide">
-                    {metrics.map(m => {
-                        const isActive = selectedMetric === m.id;
+                {/* Date Headers */}
+                <div className="flex justify-end mb-4 pr-0">
+                     <div className="flex gap-3">
+                         {displayDates.map(date => (
+                             <div key={date.toString()} className="w-8 text-center">
+                                 <span className={`text-xs font-bold uppercase ${isToday(date) ? 'text-black dark:text-white' : 'text-gray-400'}`}>
+                                     {format(date, 'EQQ')} {/* Two letter day name? EEE is 3 letter. */}
+                                     {/* Custom substring for 2 letter */}
+                                     {format(date, 'EEE').substring(0,2)}
+                                 </span>
+                             </div>
+                         ))}
+                     </div>
+                </div>
+
+                {/* Habits List */}
+                <div className="space-y-6">
+                    {trackedHabits.map((habit, idx) => {
+                        const style = getHabitConfig(habit);
+                        const streak = calculateStreak(habit);
+                        
                         return (
-                            <button
-                                key={m.id}
-                                onClick={() => setSelectedMetric(m.id)}
-                                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm whitespace-nowrap transition-all cursor-pointer border-2 ${
-                                    isActive 
-                                    ? (isDarkMode ? 'bg-white text-black border-white' : 'bg-black text-white border-black shadow-lg shadow-gray-200')
-                                    : (isDarkMode ? 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-700' : 'bg-white text-gray-500 border-gray-100 hover:border-gray-200')
-                                }`}
+                            <motion.div 
+                                key={habit}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: idx * 0.05 }}
+                                className="flex items-center justify-between group"
                             >
-                                <m.icon className={isActive ? (isDarkMode ? 'text-black' : 'text-white') : ''} /> 
-                                {m.label}
-                            </button>
-                        )
+                                {/* Left Info */}
+                                <div className="flex items-center gap-4 flex-1">
+                                    <div className={`w-12 h-12 rounded-full ${style.bg} flex items-center justify-center ${style.color} text-xl shadow-sm`}>
+                                        {style.icon}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 dark:text-white text-base leading-tight">{habit}</h3>
+                                        <div className={`text-xs font-bold uppercase tracking-wide mt-0.5 ${style.color.replace('text-', 'text-opacity-65 text-')}`}>
+                                            {streak}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Checks */}
+                                <div className="flex gap-3">
+                                    {displayDates.map(date => {
+                                        const dateStr = format(date, 'yyyy-MM-dd');
+                                        const isDone = logs[dateStr]?.habits?.includes(habit);
+                                        const isFutureDay = isFuture(date);
+                                        
+                                        return (
+                                            <button
+                                                key={dateStr}
+                                                disabled={isFutureDay}
+                                                onClick={() => toggleHabit(dateStr, habit)}
+                                                className={`
+                                                    w-8 h-8 rounded-[10px] transition-all duration-300
+                                                    ${isDone 
+                                                        ? `${style.fill} shadow-sm scale-100` 
+                                                        : `bg-gray-100 dark:bg-gray-800 scale-90 hover:scale-100`
+                                                    }
+                                                    ${isFutureDay ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'}
+                                                `}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </motion.div>
+                        );
                     })}
                 </div>
 
-                {/* Heatmap Container */}
-                <div className={`rounded-[2.5rem] shadow-xl border p-6 md:p-10 overflow-hidden relative ${isDarkMode ? 'bg-gray-900 border-gray-800 shadow-none' : 'bg-white shadow-gray-100 border-gray-100'}`}>
-                     <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${isDarkMode ? 'from-gray-800 via-gray-700 to-gray-800' : 'from-gray-100 via-gray-200 to-gray-100'}`}></div>
-                     
-                     <div className="overflow-x-auto pb-4">
-                        <div className="min-w-[800px]">
-                            {/* Days Grid */}
-                            <div className="grid grid-flow-col grid-rows-7 gap-1.5 w-max">
-                                {days.map(day => (
-                                    <motion.div
-                                        key={day.toISOString()}
-                                        initial={{ opacity: 0, scale: 0 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        transition={{ duration: 0.2 }}
-                                        className={`w-4 h-4 rounded-md ${getColor(format(day, 'yyyy-MM-dd'))} transition-colors hover:scale-125 cursor-pointer ${isDarkMode ? 'hover:ring-white ring-offset-gray-900' : 'hover:ring-black ring-offset-white'} hover:ring-2 ring-offset-1`}
-                                        title={`${format(day, 'MMM d')}: ${logData[format(day, 'yyyy-MM-dd')]?.note || 'No Data'}`}
-                                    ></motion.div>
-                                ))}
-                            </div>
-                        </div>
-                     </div>
+                {/* Floating Add Button (Bottom Right) */}
+                <motion.div 
+                    initial={{ scale: 0 }} animate={{ scale: 1 }}
+                    className="fixed bottom-24 right-6 z-40 md:hidden"
+                >
+                    <button 
+                        onClick={addNewHabit}
+                        className="w-14 h-14 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shadow-2xl shadow-gray-400/50 dark:shadow-none hover:scale-110 active:scale-90 transition-all"
+                    >
+                        <FiPlus size={28} />
+                    </button>
+                </motion.div>
 
-                     {/* Legend / Key */}
-                     <div className={`mt-8 pt-6 border-t flex items-center justify-between text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'border-gray-800 text-gray-500' : 'border-gray-100 text-gray-400'}`}>
-                        <div>Less</div>
-                        <div className="flex gap-1">
-                             <div className={`w-3 h-3 rounded-sm ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}></div>
-                             {selectedMetric === 'mood' && (
-                                <>
-                                    <div className="w-3 h-3 bg-red-300 rounded-sm"></div>
-                                    <div className="w-3 h-3 bg-orange-300 rounded-sm"></div>
-                                    <div className="w-3 h-3 bg-yellow-300 rounded-sm"></div>
-                                    <div className="w-3 h-3 bg-green-300 rounded-sm"></div>
-                                    <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
-                                </>
-                             )}
-                              {selectedMetric === 'steps' && (
-                                <>
-                                    <div className="w-3 h-3 bg-blue-100 rounded-sm"></div>
-                                    <div className="w-3 h-3 bg-blue-300 rounded-sm"></div>
-                                    <div className="w-3 h-3 bg-blue-600 rounded-sm"></div>
-                                </>
-                             )}
-                        </div>
-                        <div>More</div>
-                     </div>
-                </div>
-
+                {/* Empty State */}
+                {trackedHabits.length === 0 && !loading && (
+                    <div className="text-center py-20 text-gray-400">
+                        <p>No habits tracked yet.</p>
+                        <button onClick={addNewHabit} className="text-indigo-500 font-bold mt-2">Add one now</button>
+                    </div>
+                )}
             </div>
         </div>
     );

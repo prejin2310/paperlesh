@@ -1,22 +1,24 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   format, 
   startOfMonth, 
   endOfMonth, 
   eachDayOfInterval, 
-  isSameDay, 
   getDay, 
   addMonths, 
   subMonths,
   isToday,
-  isFuture 
+  isFuture,
+  parseISO
 } from 'date-fns';
-import { FiX, FiChevronLeft, FiChevronRight, FiMaximize2 } from 'react-icons/fi';
+import { FiX, FiChevronLeft, FiChevronRight, FiCalendar, FiList } from 'react-icons/fi';
 import { useTheme } from '../../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const CalendarModal = ({ isOpen, onClose, logs, onSelectDate }) => {
+const CalendarModal = ({ isOpen, onClose, logs, onDateSelect }) => {
   const { isDarkMode } = useTheme();
+  const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'list'
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const start = startOfMonth(currentDate);
@@ -27,136 +29,169 @@ const CalendarModal = ({ isOpen, onClose, logs, onSelectDate }) => {
   const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
 
-  // Mood Colors Mapping (0-7) - keeping consistent with Dashboard/Logs
-  const moodColors = [
-    'bg-yellow-100 text-yellow-800', // Happy
-    'bg-pink-100 text-pink-800',     // Fantastic
-    'bg-rose-100 text-rose-800',     // Romantic
-    'bg-emerald-100 text-emerald-800', // Normal
-    'bg-orange-100 text-orange-800', // Stressed
-    'bg-indigo-100 text-indigo-800', // Tired
-    'bg-red-100 text-red-800',         // Angry
-    'bg-blue-100 text-blue-800'       // Sad
-  ];
+  // Sort logs for List View - Descending
+  const historyList = Object.keys(logs || {})
+      .sort((a, b) => new Date(b) - new Date(a))
+      .map(date => ({ date, ...logs[date] }));
+
+  const MOOD_EMOJI = ['😊', '🤩', '🥰', '😌', '😓', '😴', '😡', '😢'];
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        {/* Backdrop */}
+       <div className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center p-4">
         <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         />
 
-        {/* Modal Content */}
+        {/* Modal Container */}
         <motion.div 
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className={`w-full max-w-md rounded-3xl shadow-2xl relative overflow-hidden ${
-                isDarkMode ? 'bg-gray-900 border border-gray-800' : 'bg-white'
-            }`}
+            initial={{ opacity: 0, scale: 0.95, y: "100%" }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: "100%" }}
+            className={`relative z-10 w-full max-w-lg h-[85vh] flex flex-col rounded-[2rem] shadow-2xl overflow-hidden mb-20 md:mb-0 ${isDarkMode ? 'bg-[#1a1a1a] text-white' : 'bg-white text-gray-900'}`}
         >
-             {/* Header */}
-            <div className={`p-6 pb-2 flex items-center justify-between ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                <div>
-                    <h2 className="text-2xl font-black">{format(currentDate, 'MMMM yyyy')}</h2>
-                    <p className={`text-sm font-medium opacity-60`}>Your Journey Log</p>
+            {/* Header */}
+            <div className={`p-6 pb-2`}>
+                <div className="flex justify-between items-center mb-6">
+                     <h2 className="text-2xl font-black">History</h2>
+                     <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                         <FiX size={24} />
+                     </button>
                 </div>
-                <div className="flex items-center gap-2">
-                     <button onClick={prevMonth} className={`p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors`}>
-                        <FiChevronLeft size={20} />
-                     </button>
-                     <button onClick={nextMonth} className={`p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors`}>
-                        <FiChevronRight size={20} />
-                     </button>
-                     <button onClick={onClose} className={`p-2 rounded-full bg-gray-100 dark:bg-gray-800 ml-2`}>
-                        <FiX size={18} />
-                     </button>
+                
+                {/* Tabs */}
+                <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-4">
+                    <button 
+                         onClick={() => setViewMode('calendar')}
+                         className={`flex-1 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${viewMode === 'calendar' ? 'bg-white dark:bg-gray-700 shadow-sm text-amber-500' : 'text-gray-500 dark:text-gray-400'}`}
+                    >
+                        <FiCalendar /> Calendar
+                    </button>
+                    <button 
+                         onClick={() => setViewMode('list')}
+                         className={`flex-1 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-amber-500' : 'text-gray-500 dark:text-gray-400'}`}
+                    >
+                        <FiList /> All Entries
+                    </button>
                 </div>
             </div>
 
-            {/* Calendar Grid */}
-            <div className="p-6">
-                <div className="grid grid-cols-7 mb-4">
-                     {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-                         <div key={i} className="text-center text-xs font-bold opacity-40 uppercase tracking-widest">
-                            {d}
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto px-6 pb-6">
+                
+                {/* CALENDAR VIEW */}
+                {viewMode === 'calendar' && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <div className="flex justify-between items-center mb-6 px-1">
+                             <h3 className="text-xl font-bold">{format(currentDate, 'MMMM yyyy')}</h3>
+                             <div className="flex gap-2">
+                                 <button onClick={prevMonth} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full"><FiChevronLeft /></button>
+                                 <button onClick={nextMonth} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full"><FiChevronRight /></button>
+                             </div>
+                        </div>
+
+                         <div className="grid grid-cols-7 gap-2 mb-2 text-center">
+                             {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+                                 <div key={d} className="text-xs font-bold text-gray-400 uppercase tracking-widest">{d}</div>
+                             ))}
                          </div>
-                     ))}
-                </div>
-                <div className="grid grid-cols-7 gap-3">
-                    {[...Array(startDayOfWeek)].map((_, i) => <div key={`empty-${i}`} />)}
-                    
-                    {days.map(day => {
-                        const dayStr = format(day, 'yyyy-MM-dd');
-                        const log = logs[dayStr];
-                        const hasLog = !!log;
-                        const isTodayDate = isSameDay(day, new Date());
-                        const isFutureDate = isFuture(day);
-                        const isMissed = !hasLog && !isFutureDate && !isTodayDate;
-                        
-                        let cellStyle = "";
+                         <div className="grid grid-cols-7 gap-2">
+                             {[...Array(startDayOfWeek)].map((_, i) => <div key={`e-${i}`} />)}
+                             {days.map(day => {
+                                 const dateStr = format(day, 'yyyy-MM-dd');
+                                 const log = logs?.[dateStr];
+                                 
+                                 return (
+                                     <button
+                                         key={dateStr}
+                                         onClick={() => {
+                                             onDateSelect(dateStr); // Use correct prop name from Dashboard
+                                             onClose();
+                                         }}
+                                         disabled={isFuture(day)}
+                                         className={`
+                                            aspect-square rounded-2xl flex flex-col items-center justify-center relative transition-all group
+                                            ${log ? (isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100') : ''}
+                                            ${isToday(day) ? 'ring-2 ring-amber-400 ring-offset-2 dark:ring-offset-black' : ''}
+                                            ${isFuture(day) ? 'opacity-30 cursor-not-allowed' : ''}
+                                         `}
+                                     >
+                                         <span className={`text-sm font-bold ${!log ? 'text-gray-400' : ''}`}>{format(day, 'd')}</span>
+                                         {log && (
+                                            <div className="mt-1">
+                                                {log.mood !== undefined ? (
+                                                    <span className="text-xs filter grayscale-[0.3] group-hover:grayscale-0 transition-all">{MOOD_EMOJI[log.mood]}</span>
+                                                ) : (
+                                                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                                                )}
+                                            </div>
+                                         )}
+                                     </button>
+                                 )
+                             })}
+                         </div>
+                    </motion.div>
+                )}
 
-                        if (isTodayDate) {
-                             if(hasLog) {
-                                // Today + Logged = Green Highlight
-                                cellStyle = isDarkMode 
-                                 ? 'bg-emerald-900/40 text-white border border-emerald-500 shadow-md shadow-emerald-500/20' 
-                                 : 'bg-emerald-50 text-emerald-950 border border-emerald-500 shadow-md shadow-emerald-200';
-                             } else {
-                                // Today + Not Logged = Black/White Action
-                                cellStyle = isDarkMode ? 'bg-white text-black ring-2 ring-white z-10' : 'bg-black text-white ring-2 ring-black z-10';
-                             }
-                        } else if (isFutureDate) {
-                            // Upcoming = Freeze
-                            cellStyle = isDarkMode ? 'bg-gray-900/40 text-gray-700 opacity-50 grayscale cursor-not-allowed' : 'bg-gray-50/50 text-gray-300 opacity-40 cursor-not-allowed';
-                        } else if (hasLog) {
-                             // Logged = Light Green (Consistent with Dashboard)
-                             cellStyle = isDarkMode ? 'bg-emerald-900/20 text-emerald-300 border border-emerald-800/50' : 'bg-emerald-50 text-emerald-900 border border-emerald-200';
-                        } else if (isMissed) {
-                            // Missed = Light Red
-                            cellStyle = isDarkMode ? 'bg-red-900/20 text-red-500 border border-red-800/50' : 'bg-red-50 text-red-600 border border-red-200';
-                        } else {
-                            // Fallback
-                             cellStyle = isDarkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-50 text-gray-400';
-                        }
-                        
-                        return (
-                            <motion.button 
-                                disabled={isFutureDate}
-                                whileHover={!isFutureDate ? { scale: 1.1 } : {}}
-                                whileTap={!isFutureDate ? { scale: 0.9 } : {}}
-                                key={dayStr}
-                                onClick={() => {
-                                    if(!isFutureDate) {
-                                        onSelectDate(dayStr);
-                                        onClose();
-                                    }
-                                }}
-                                className={`relative flex flex-col items-center justify-center aspect-square ${isFutureDate ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                            >
-                                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold transition-all shadow-sm ${cellStyle}`}>
-                                    {format(day, 'd')}
-                                </div>
-                            </motion.button>
-                        );
-                    })}
-                </div>
-            </div>
-            
-            <div className={`p-4 text-center text-xs font-medium border-t ${isDarkMode ? 'border-gray-800 text-gray-500' : 'border-gray-100 text-gray-400'}`}>
-                Select a date to view or edit entry
-            </div>
+                {/* LIST VIEW (FEED) */}
+                {viewMode === 'list' && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                        {historyList.length === 0 ? (
+                            <div className="text-center py-20 opacity-50">
+                                <span className="text-4xl block mb-2">📭</span>
+                                <p>No journal entries yet.</p>
+                            </div>
+                        ) : (
+                             historyList.map(entry => (
+                                 <motion.div 
+                                    key={entry.date} 
+                                    layout
+                                    onClick={() => { onDateSelect(entry.date); onClose(); }}
+                                    className={`p-5 rounded-[1.5rem] cursor-pointer transition-transform hover:scale-[1.02] border ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-100 shadow-sm'}`}
+                                 >
+                                     <div className="flex items-start gap-4">
+                                         <div className={`w-14 h-14 flex-shrink-0 rounded-2xl flex items-center justify-center text-2xl ${entry.mood !== undefined ? 'bg-transparent' : 'bg-gray-100 dark:bg-gray-700'}`}>
+                                             {entry.mood !== undefined ? MOOD_EMOJI[entry.mood] : '📝'}
+                                         </div>
+                                         <div className="flex-1 min-w-0">
+                                             <div className="flex justify-between items-center mb-1">
+                                                 <span className="font-bold text-lg">{format(parseISO(entry.date), 'MMMM do, yyyy')}</span>
+                                                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{format(parseISO(entry.date), 'EEE')}</span>
+                                             </div>
+                                             
+                                             <p className="text-gray-600 dark:text-gray-300 line-clamp-2 text-sm font-medium leading-relaxed">
+                                                 {entry.note || entry.longNote || entry.story || "No text written."}
+                                             </p>
+                                             
+                                             {(entry.tags || []).length > 0 && (
+                                                <div className="flex gap-2 mt-3 overflow-hidden">
+                                                    {entry.tags.slice(0, 3).map(tag => (
+                                                        <span key={tag} className="text-[10px] font-bold px-2 py-1 bg-gray-100 dark:bg-gray-700/50 rounded-md text-gray-500 uppercase">
+                                                            #{tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                             )}
+                                         </div>
+                                     </div>
+                                 </motion.div>
+                             ))
+                        )}
+                        <p className="text-center text-xs text-gray-400 font-bold uppercase tracking-widest py-8">End of History</p>
+                    </motion.div>
+                )}
 
+            </div>
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 
