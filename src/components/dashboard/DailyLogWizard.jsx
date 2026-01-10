@@ -565,16 +565,16 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                                     
                                     {/* Add New Item */}
                                     <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl space-y-3 border border-gray-100 dark:border-gray-700">
-                                        <input placeholder="What did you buy?" className="w-full bg-gray-50 dark:bg-gray-900 p-3 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                        <input placeholder="What did you buy?" className="w-full bg-gray-50 dark:bg-gray-800 p-3 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
                                             value={formData.shoppingData.item} onChange={e => setFormData(prev => ({ ...prev, shoppingData: { ...prev.shoppingData, item: e.target.value } }))}
                                         />
                                         <div className="grid grid-cols-2 gap-2">
-                                            <input type="number" placeholder="Qty" className="bg-gray-50 dark:bg-gray-900 p-3 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                            <input type="number" placeholder="Qty" className="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
                                                 value={formData.shoppingData.qty} onChange={e => setFormData(prev => ({ ...prev, shoppingData: { ...prev.shoppingData, qty: e.target.value } }))}
                                             />
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-gray-400 dark:text-gray-500 text-xs">₹</span>
-                                                <input type="number" placeholder="Price" className="w-full bg-gray-50 dark:bg-gray-900 p-3 pl-6 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                                <input type="number" placeholder="Price" className="w-full bg-gray-50 dark:bg-gray-800 p-3 pl-6 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
                                                     value={formData.shoppingData.price} onChange={e => setFormData(prev => ({ ...prev, shoppingData: { ...prev.shoppingData, price: e.target.value } }))}
                                                 />
                                             </div>
@@ -665,10 +665,10 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                             </div>
                             {formData.watchedMovie && (
                                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
-                                    <input placeholder="Movie / Series Name" className="w-full bg-white dark:bg-gray-900 p-3 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                    <input placeholder="Movie / Series Name" className="w-full bg-white dark:bg-gray-800 p-3 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
                                         value={formData.movieData.name} onChange={e => setFormData(prev => ({ ...prev, movieData: { ...prev.movieData, name: e.target.value } }))}
                                     />
-                                    <input placeholder="Language" className="w-full bg-white dark:bg-gray-900 p-3 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                    <input placeholder="Language" className="w-full bg-white dark:bg-gray-800 p-3 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
                                         value={formData.movieData.language} onChange={e => setFormData(prev => ({ ...prev, movieData: { ...prev.movieData, language: e.target.value } }))}
                                     />
 
@@ -692,15 +692,15 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                                     {/* Additional fields for Theatre */}
                                     {formData.movieData.platform === 'Theatre' && (
                                         <div className="grid grid-cols-2 gap-2">
-                                             <input placeholder="Which Theatre?" className="bg-white dark:bg-gray-900 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                             <input placeholder="Which Theatre?" className="bg-white dark:bg-gray-800 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
                                                 value={formData.movieData.theatreLocation} onChange={e => setFormData(prev => ({ ...prev, movieData: { ...prev.movieData, theatreLocation: e.target.value } }))}
                                              />
-                                             <input placeholder="With whom?" className="bg-white dark:bg-gray-900 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                             <input placeholder="With whom?" className="bg-white dark:bg-gray-800 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
                                                  value={formData.movieData.withWhom} onChange={e => setFormData(prev => ({ ...prev, movieData: { ...prev.movieData, withWhom: e.target.value } }))}
                                              />
                                         </div>
                                     )}
-                                     <input type="number" placeholder="Rating (1-10)" className="w-full bg-white dark:bg-gray-900 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                     <input type="number" placeholder="Rating (1-10)" className="w-full bg-white dark:bg-gray-800 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
                                         value={formData.movieData.rating} onChange={e => setFormData(prev => ({ ...prev, movieData: { ...prev.movieData, rating: e.target.value } }))}
                                      />
                                 </motion.div>
@@ -724,18 +724,18 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
                             </div>
                             {formData.readBook && (
                                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
-                                    <input placeholder="Book Name" className="w-full bg-white dark:bg-gray-900 p-3 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                    <input placeholder="Book Name" className="w-full bg-white dark:bg-gray-800 p-3 rounded-xl text-sm font-bold outline-none dark:text-white dark:placeholder-gray-500" 
                                         value={formData.bookData.name} onChange={e => setFormData(prev => ({ ...prev, bookData: { ...prev.bookData, name: e.target.value } }))}
                                     />
                                     <div className="grid grid-cols-2 gap-2">
-                                        <input placeholder="Author" className="bg-white dark:bg-gray-900 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                        <input placeholder="Author" className="bg-white dark:bg-gray-800 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
                                             value={formData.bookData.author} onChange={e => setFormData(prev => ({ ...prev, bookData: { ...prev.bookData, author: e.target.value } }))}
                                         />
-                                        <input placeholder="Genre" className="bg-white dark:bg-gray-900 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                        <input placeholder="Genre" className="bg-white dark:bg-gray-800 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
                                             value={formData.bookData.genre} onChange={e => setFormData(prev => ({ ...prev, bookData: { ...prev.bookData, genre: e.target.value } }))}
                                         />
                                     </div>
-                                    <input type="number" placeholder="Rating (1-5)" className="w-full bg-white dark:bg-gray-900 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
+                                    <input type="number" placeholder="Rating (1-5)" className="w-full bg-white dark:bg-gray-800 p-3 rounded-xl text-xs font-bold outline-none dark:text-white dark:placeholder-gray-500" 
                                         value={formData.bookData.rating} onChange={e => setFormData(prev => ({ ...prev, bookData: { ...prev.bookData, rating: e.target.value } }))}
                                     />
                                 </motion.div>

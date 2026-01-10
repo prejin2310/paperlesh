@@ -212,7 +212,7 @@ const Profile = () => {
                         </div>
                     </div>
                 </motion.div>
-            ) : (
+            ) : view === 'personal_info' ? (
                 <motion.div 
                     key="personal_info"
                     initial={{ opacity: 0, x: 20 }}
@@ -278,7 +278,7 @@ const Profile = () => {
                     </div>
 
                 </motion.div>
-            )}
+            ) : null}
             </AnimatePresence>
             
             <div className="mt-auto pt-8 text-center bg-transparent">

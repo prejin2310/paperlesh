@@ -10,6 +10,7 @@ const AVAILABLE_TOOLS = [
     { id: 'tool-bucket2026', title: 'Bucket List 2026', emoji: '🌍', subtitle: 'Yearly Goals', type: 'bucket-list-2026', color: 'orange' },
     { id: 'tool-todo', title: 'To Do List', emoji: '📝', subtitle: 'Get things done', type: 'todo-list', color: 'blue' },
     { id: 'tool-monthNote', title: 'Monthly Note', emoji: '📅', subtitle: 'Quick thoughts', type: 'monthly-note', color: 'yellow' },
+    { id: 'tool-important-dates', title: 'Important Dates', emoji: '🎂', subtitle: 'Birthdays & Events', type: 'important-dates', color: 'pink' },
 ];
 
 const EMOJI_OPTIONS = ['✨', '📔', '💪', '🧠', '❤️', '💼', '🎨', '🎵', '🥗', '😴', '🧘', '🚀'];
@@ -121,7 +122,7 @@ const QuickAccessManager = ({ isOpen, onClose, currentItems, onUpdate, customToo
                                         type="text" 
                                         value={newToolData.title}
                                         onChange={e => setNewToolData({...newToolData, title: e.target.value})}
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
                                         placeholder="e.g., Morning Pages"
                                         autoFocus
                                     />
@@ -133,7 +134,7 @@ const QuickAccessManager = ({ isOpen, onClose, currentItems, onUpdate, customToo
                                         type="text" 
                                         value={newToolData.subtitle}
                                         onChange={e => setNewToolData({...newToolData, subtitle: e.target.value})}
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border-none outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 border-none outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                                         placeholder="e.g., Clear my mind"
                                     />
                                 </div>

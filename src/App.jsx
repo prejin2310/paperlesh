@@ -14,6 +14,8 @@ import SetMpin from './pages/SetMpin';
 import VerifyMpin from './pages/VerifyMpin';
 import InstallApp from './pages/InstallApp';
 import AddCustomHabit from './pages/AddCustomHabit';
+import ImportantDates from './pages/ImportantDates';
+import CreateEvent from './pages/CreateEvent';
 import NotFound from './pages/NotFound';
 import Onboarding from './pages/Onboarding';
 
@@ -37,6 +39,7 @@ function App() {
           
           {/* Protected Routes (wrapped in Layout) */}
           <Route element={<Layout />}>
+            <Route path="/important-dates" element={<ImportantDates />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/track" element={<Track />} />
             <Route path="/month/:month?" element={<Month />} />
@@ -44,6 +47,8 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/add-habit" element={<AddCustomHabit />} />
           </Route>
+          
+          <Route path="/create-event" element={<CreateEvent />} />
 
           {/* 404 Catch-all */}
           <Route path="*" element={<NotFound />} />

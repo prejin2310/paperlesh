@@ -35,7 +35,7 @@ import {
   FiCalendar,
   FiHelpCircle
 } from 'react-icons/fi';
-import { collection, query, where, getDocs, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import DailyLogWizard from '../components/dashboard/DailyLogWizard';
 import CalendarModal from '../components/dashboard/CalendarModal';
@@ -48,9 +48,10 @@ import toast from 'react-hot-toast';
 const MOOD_COLORS = ['#fbbf24', '#facc15', '#ec4899', '#9ca3af', '#60a5fa', '#818cf8', '#ef4444', '#3b82f6']; // Approximate colors for moods
 
 const DEFAULT_QUICK_LINKS = [
+    { id: 'tool-important-dates', title: 'Important Dates', emoji: '🎂', subtitle: 'Birthdays & Events', type: 'important-dates', color: 'pink' },
+    { id: 'tool-bucket', title: '2026 Goals', emoji: '🌍', subtitle: 'Dream big', type: 'bucket-list-2026', color: 'orange' },
     { id: 'log-pause', title: 'Pause & Reflect', emoji: '🌱', subtitle: 'Gratitude check', type: 'log', color: 'rose' },
     { id: 'tool-todo', title: 'Daily Tasks', emoji: '📝', subtitle: 'Get things done', type: 'todo-list', color: 'indigo' },
-    { id: 'tool-bucket', title: '2026 Goals', emoji: '🌍', subtitle: 'Dream big', type: 'bucket-list-2026', color: 'orange' },
 ];
 
 const Dashboard = () => {
@@ -122,6 +123,8 @@ const Dashboard = () => {
   const handleQuickLinkClick = (link) => {
       if (link.type === 'log') {
           handleOpenLog(todayStr); // Or specific step if supported later
+      } else if (link.type === 'important-dates') {
+          navigate('/important-dates');
       } else {
           setActiveQuickTool(link);
       }
@@ -145,6 +148,7 @@ const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [importantDates, setImportantDates] = useState([]);
   const [loading, setLoading] = useState(true);
   
   const [searchParams, setSearchParams] = useSearchParams();
@@ -201,6 +205,18 @@ const Dashboard = () => {
         });
         
         setLogs(prev => ({ ...prev, ...logsMap }));
+
+        // Fetch Important Dates
+        try {
+            const datesRef = doc(db, 'users', currentUser.uid, 'tools', 'important_dates');
+            const datesSnap = await getDoc(datesRef);
+            if (datesSnap.exists()) {
+                setImportantDates(datesSnap.data().items || []);
+            }
+        } catch (e) {
+            console.error("Error fetching dates", e);
+        }
+
       } catch (error) {
         console.error("Error fetching logs:", error);
       } finally {
@@ -257,119 +273,106 @@ const Dashboard = () => {
     }
     return streak;
   };
-    
+
   const renderDateStrip = () => {
        const today = new Date();
        
        // Display: Mon-Sun of current week
-       // The image shows a full week Mon-Sun (Mon 7, Tue 8 ... Thu 10 ... Sun 13)
-       // So we should find the start of the current week (Monday)
        const start = startOfWeek(today, { weekStartsOn: 1 }); // Monday start
        const end = endOfWeek(today, { weekStartsOn: 1 });
        const days = eachDayOfInterval({ start, end });
 
       return (
-          <div className="mb-6 mt-4">
-              <div className="flex justify-between items-end mb-4 px-1">
-                 <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">This Week</h3>
-                 <button 
-                    onClick={() => setIsCalendarOpen(true)}
-                    className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-amber-500 bg-white dark:bg-gray-800 hover:bg-amber-50 dark:hover:bg-amber-900/20 px-3 py-1.5 rounded-full transition-all shadow-sm border border-gray-100 dark:border-gray-700"
-                 >
-                    <FiCalendar size={14} />
-                    View Month
-                 </button>
-              </div>
-
-              <div className="flex justify-between items-center">
-                  {days.map((date) => {
-                      const dateStr = format(date, 'yyyy-MM-dd');
-                      const isDayToday = isSameDay(date, today);
-                      // Check log status
-                      const isLogged = logs[dateStr];
-                      const isFutureDay = isFuture(date);
-                      const isMissed = !isLogged && !isFutureDay && !isDayToday; // Past and not logged
-
-                      // Bubble Style
-                      let bubbleClass = "w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold transition-all shadow-sm relative";
-                      let labelClass = "text-sm text-gray-400 font-medium mb-3";
-
-                      if (isDayToday) {
-                          bubbleClass += " bg-amber-400 text-gray-900 shadow-amber-200 z-10 scale-110";
-                          labelClass = "text-sm text-amber-500 font-bold mb-3";
-                      } else if (isLogged) {
-                          bubbleClass += " bg-green-100 text-green-700 ring-2 ring-green-200 dark:bg-green-900/30 dark:text-green-300 dark:ring-green-800";
-                      } else if (isMissed) {
-                          bubbleClass += " bg-red-50 text-red-500 ring-1 ring-red-100 dark:bg-red-900/20 dark:text-red-400 dark:ring-red-900";
-                      } else {
-                          // Future or just default Empty
-                          bubbleClass += " bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-400";
-                      }
-
-                      return (
-                          <button 
-                            key={dateStr}
-                            onClick={() => setSelectedDate(dateStr)}
-                            className="flex flex-col items-center group"
-                          >
-                              <span className={labelClass}>
-                                  {format(date, 'EEE')}
-                              </span>
-                              <div className={`${bubbleClass} ${selectedDate === dateStr ? 'ring-4 ring-offset-2 ring-amber-300 transform scale-105' : ''}`}>
-                                  {format(date, 'd')}
-                                  
-                                  {/* Indicator Dots */}
-                                  {isLogged && (
-                                      <div className="absolute -bottom-1 w-1.5 h-1.5 bg-green-500 rounded-full" />
-                                  )}
-                                  {isMissed && !isDayToday && selectedDate !== dateStr && (
-                                      <div className="absolute -bottom-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
-                                  )}
-                              </div>
-                          </button>
-                      )
-                  })}
-              </div>
+          <div className="mb-6 mt-4 relative z-10 hidden">
           </div>
       );
   };
 
+  const renderDateStrip_REAL = () => {
+    const today = new Date();
+    const start = startOfWeek(today, { weekStartsOn: 1 });
+    const end = endOfWeek(today, { weekStartsOn: 1 });
+    const days = eachDayOfInterval({ start, end });
+
+    return (
+        <div className="mb-6 mt-4 relative z-10">
+            <div className="flex justify-between items-end mb-4 px-1">
+               <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">This Week</h3>
+               <button 
+                  onClick={() => setIsCalendarOpen(true)}
+                  className="flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full transition-all shadow-sm backdrop-blur-md bg-white/50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+               >
+                  <FiCalendar size={14} />
+                  View Month
+               </button>
+            </div>
+
+            <div className="flex justify-between items-center">
+                {days.map((date) => {
+                    const dateStr = format(date, 'yyyy-MM-dd');
+                    const isDayToday = isSameDay(date, today);
+                    const isLogged = logs[dateStr];
+                    const isFutureDay = isFuture(date);
+                    const isMissed = !isLogged && !isFutureDay && !isDayToday;
+
+                    let bubbleClass = "w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold transition-all duration-300 relative ";
+                    let labelClass = "text-sm font-medium mb-3 text-gray-400 dark:text-gray-500";
+
+                    if (isDayToday) {
+                        bubbleClass += "bg-amber-400 text-amber-950 shadow-amber-200/50 shadow-lg scale-110 z-10";
+                        labelClass = "text-sm font-bold mb-3 text-amber-600 dark:text-amber-400";
+                    } else if (isLogged) {
+                        bubbleClass += "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 ring-2 ring-green-200 dark:ring-green-900";
+                    } else if (isMissed) {
+                         bubbleClass += "bg-red-50 text-red-500 dark:bg-red-900/10 dark:text-red-400 ring-1 ring-red-100 dark:ring-red-900/30";
+                    } else {
+                        bubbleClass += "bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-400 shadow-sm";
+                    }
+
+                    return (
+                        <button 
+                          key={dateStr}
+                          onClick={() => setSelectedDate(dateStr)}
+                          className="flex flex-col items-center group relative"
+                        >
+                            <span className={labelClass}>
+                                {format(date, 'EEE')}
+                            </span>
+                            <div className={`${bubbleClass} ${selectedDate === dateStr ? 'scale-105 ring-2 ring-amber-300 ring-offset-2 dark:ring-offset-gray-900' : ''}`}>
+                                {format(date, 'd')}
+                                
+                                {isLogged && (
+                                    <div className="absolute -bottom-1 w-1.5 h-1.5 bg-green-500 rounded-full" />
+                                )}
+                                {isMissed && !isDayToday && selectedDate !== dateStr && (
+                                    <div className="absolute -bottom-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
+                                )}
+                            </div>
+                        </button>
+                    )
+                })}
+            </div>
+        </div>
+    );
+  };
+
   const renderGreetings = () => {
       const name = currentUser?.fullName || currentUser?.displayName || 'Friend';
-      // Fallback to displayName if fullName missing, then 'Friend'
-      
       const streak = calculateStreak();
-      
-      // Determine Avatar based on gender if available, else use seed
-      const gender = currentUser?.gender?.toLowerCase();
-      let avatarSeed = currentUser?.uid;
-      let avatarStyle = "avataaars";
-      
-      if (gender === 'male') {
-          // Add params to make it look more masculine if possible, or use a seed known to be male-ish? 
-          // Dicebear is random. Let's just use the seed.
-          // Alternatively, we can use "micah" style which is nice.
-          // Let's stick to avataaars but maybe append 'male' to seed to vary it.
-          avatarSeed = currentUser?.uid + "male";
-      } else if (gender === 'female') {
-          avatarSeed = currentUser?.uid + "female";
-      }
-
-      const photoURL = currentUser?.photoURL || `https://api.dicebear.com/7.x/${avatarStyle}/svg?seed=${avatarSeed}`;
 
       return (
-          <div className="flex justify-between items-center mb-6 pt-2">
+          <div className="flex justify-between items-start mb-8 pt-6 relative z-10">
               <div>
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white capitalize">
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white transition-colors">
                       Hi, {name}
                   </h1>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-sm font-medium mt-1 text-gray-500 dark:text-gray-400 transition-colors">
                       {format(new Date(), 'EEEE, MMM d')}
                   </p>
                   
                   {streak > 0 && (
-                      <div className="flex items-center gap-1.5 mt-2 bg-orange-50 dark:bg-orange-900/30 w-fit px-2 py-1 rounded-full border border-orange-100 dark:border-orange-800">
-                          <FiZap className="text-orange-500 w-3 h-3 fill-current" />
+                      <div className="flex items-center gap-1.5 mt-3 w-fit px-3 py-1.5 rounded-full shadow-sm bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-900/30">
+                          <FiZap className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
                           <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
                               {streak} Day Streak
                           </span>
@@ -377,23 +380,20 @@ const Dashboard = () => {
                   )}
               </div>
 
-              <div className="flex items-center gap-2 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md p-1.5 rounded-full border border-white/50 dark:border-gray-700 shadow-sm transition-all hover:shadow-md hover:scale-105">
-                   {/* Theme Toggle */}
+              <div className="flex items-center gap-1 backdrop-blur-md p-1 rounded-full border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 shadow-sm transition-all hover:scale-105 duration-300">
                    <button 
                         onClick={toggleTheme}
-                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 hover:text-amber-500 dark:hover:text-amber-400 transition-all shadow-sm"
+                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                         aria-label="Toggle Theme"
                     >
                         {isDarkMode ? <FiMoon size={18} /> : <FiSun size={18} />}
                     </button>
 
-                    {/* Vertical Divider */}
-                   <div className="w-px h-4 bg-gray-200 dark:bg-gray-700"></div>
+                   <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 opacity-50"></div>
 
-                   {/* Bell */}
                    <button 
                         onClick={() => toast('No new notifications', { icon: '🔔' })}
-                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 hover:text-indigo-500 dark:hover:text-indigo-400 transition-all shadow-sm"
+                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                         aria-label="Notifications"
                     >
                         <FiBell size={18} />
@@ -401,7 +401,7 @@ const Dashboard = () => {
                     
                    <button 
                         onClick={() => setIsAppGuideOpen(true)}
-                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-500 dark:hover:text-blue-400 transition-all shadow-sm"
+                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                         aria-label="Help Guide"
                     >
                         <FiHelpCircle size={18} />
@@ -414,43 +414,115 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen relative overflow-hidden bg-[#F6F5F2] dark:bg-[#0a0a0a] font-sans transition-colors duration-500">
       
-      {/* Ambient Background Animation - Fixed Pastel Theme (Optimized) */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-           {/* Static Gradients for Performance, minimal movement */}
-           <div className="absolute -top-40 -left-20 w-[500px] h-[500px] bg-amber-200/30 dark:bg-amber-900/10 rounded-full mix-blend-multiply dark:mix-blend-screen blur-[100px] animate-blob" />
-           <div className="absolute top-20 -right-40 w-[400px] h-[400px] bg-rose-200/30 dark:bg-rose-900/10 rounded-full mix-blend-multiply dark:mix-blend-screen blur-[100px] animate-blob animation-delay-2000" />
-           <div className="absolute -bottom-20 left-1/3 w-[500px] h-[500px] bg-blue-200/30 dark:bg-blue-900/10 rounded-full mix-blend-multiply dark:mix-blend-screen blur-[100px] animate-blob animation-delay-4000" />
+      {/* Ambient Background Animation - Time Based */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden transition-colors duration-1000 ease-in-out">
+           {/* Base Gradient Layer */}
+           <div className={`absolute inset-0 transition-colors duration-1000 ${
+               timeOfDay === 'morning' ? 'bg-orange-50/50 dark:bg-[#0f0c08]' :
+               timeOfDay === 'noon' ? 'bg-sky-50/50 dark:bg-[#080c14]' :
+               timeOfDay === 'evening' ? 'bg-indigo-50/50 dark:bg-[#0a0612]' :
+               'bg-slate-50/50 dark:bg-[#050505]'
+           }`} />
+
+           {/* Animated Blobs */}
+           <div className={`absolute -top-40 -left-20 w-[600px] h-[600px] rounded-full mix-blend-multiply dark:mix-blend-screen blur-[120px] animate-blob transition-colors duration-1000 ${
+               timeOfDay === 'morning' ? 'bg-amber-200/40 dark:bg-amber-800/20' :
+               timeOfDay === 'noon' ? 'bg-sky-200/40 dark:bg-sky-800/20' :
+               timeOfDay === 'evening' ? 'bg-purple-300/40 dark:bg-purple-800/20' :
+               'bg-indigo-900/20 dark:bg-indigo-900/20'
+           }`} />
+           
+           <div className={`absolute top-20 -right-40 w-[500px] h-[500px] rounded-full mix-blend-multiply dark:mix-blend-screen blur-[120px] animate-blob animation-delay-2000 transition-colors duration-1000 ${
+               timeOfDay === 'morning' ? 'bg-rose-200/40 dark:bg-rose-800/20' :
+               timeOfDay === 'noon' ? 'bg-cyan-200/40 dark:bg-cyan-800/20' :
+               timeOfDay === 'evening' ? 'bg-pink-300/40 dark:bg-pink-800/20' :
+               'bg-violet-900/20 dark:bg-violet-900/20'
+           }`} />
+           
+           <div className={`absolute -bottom-20 left-1/3 w-[600px] h-[600px] rounded-full mix-blend-multiply dark:mix-blend-screen blur-[120px] animate-blob animation-delay-4000 transition-colors duration-1000 ${
+               timeOfDay === 'morning' ? 'bg-yellow-100/40 dark:bg-yellow-800/10' :
+               timeOfDay === 'noon' ? 'bg-blue-100/40 dark:bg-blue-800/10' :
+               timeOfDay === 'evening' ? 'bg-orange-200/40 dark:bg-orange-800/10' :
+               'bg-slate-800/20 dark:bg-slate-800/10'
+           }`} />
       </div>
 
       <div className="relative z-10 pb-32 pt-12 px-6">
-        {/* Dynamic Hero Visuals based on Time of Day - Optimized */}
-        <div className="absolute top-0 left-0 right-0 h-[450px] z-[-1] overflow-hidden pointer-events-none transition-colors duration-1000">
+        {/* Dynamic Hero Visuals based on Time of Day */}
+        <div className="absolute top-0 left-0 right-0 h-[600px] z-[-1] overflow-hidden pointer-events-none select-none">
              
-             {/* Morning: Rising Mist & Warm Rays */}
+             {/* Morning: Sun & Rays */}
              {timeOfDay === 'morning' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5 }} className="absolute inset-0">
-                    <div className="absolute top-[-50%] -right-20 w-[600px] h-[600px] bg-gradient-to-br from-amber-200/30 via-orange-100/10 to-transparent rounded-full blur-[80px]" />
+                    {/* Sun Position */}
+                    <motion.div 
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.2, duration: 1 }}
+                        className="absolute top-20 right-[10%] w-24 h-24 bg-gradient-to-br from-yellow-300 to-orange-300 rounded-full blur-[2px] shadow-[0_0_60px_rgba(253,224,71,0.6)]" 
+                    />
+                    {/* Sun glow */}
+                    <div className="absolute top-10 right-[5%] w-[300px] h-[300px] bg-amber-200/20 rounded-full blur-[60px]" />
+                    
+                    {/* Subtle Rays */}
+                    <div className="absolute top-[30%] right-[20%] w-20 h-1 bg-gradient-to-r from-transparent via-yellow-100/30 to-transparent blur-[1px] -rotate-12" />
+                    <div className="absolute top-[35%] right-[15%] w-32 h-1 bg-gradient-to-r from-transparent via-yellow-100/20 to-transparent blur-[1px] -rotate-12" />
                 </motion.div>
              )}
 
-             {/* Noon: Bright Clear Sky & Sun */}
+             {/* Noon: Bright Sun High Up */}
              {timeOfDay === 'noon' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5 }} className="absolute inset-0">
-                    <div className="absolute -top-40 right-10 w-[400px] h-[400px] bg-sky-200/30 blur-[80px] rounded-full" />
+                    {/* Intense High Sun */}
+                     <motion.div 
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.2, duration: 1 }}
+                        className="absolute -top-10 right-[20%] w-32 h-32 bg-white rounded-full blur-xl opacity-80 shadow-[0_0_100px_rgba(255,255,255,0.8)]" 
+                    />
+                    {/* Clouds */}
+                    <div className="absolute top-[15%] left-[10%] w-32 h-10 bg-white/40 blur-xl rounded-full animate-pulse duration-[4000ms]" />
+                    <div className="absolute top-[25%] right-[30%] w-48 h-12 bg-white/30 blur-xl rounded-full animate-pulse duration-[5000ms]" />
                 </motion.div>
              )}
 
-             {/* Evening: Sunset Gradients */}
+             {/* Evening: Setting Sun & Purple Hues */}
              {timeOfDay === 'evening' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5 }} className="absolute inset-0">
-                    <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-gradient-to-bl from-pink-300/20 via-purple-300/10 to-indigo-300/5 blur-[80px] rounded-full" />
+                    {/* Setting Sun low */}
+                    <div className="absolute bottom-[20%] left-[10%] w-40 h-40 bg-gradient-to-t from-orange-500 to-rose-400 rounded-full blur-md opacity-80" />
+                    <div className="absolute bottom-0 left-[-10%] w-[600px] h-[400px] bg-gradient-to-tr from-purple-500/30 via-pink-400/20 to-transparent blur-[90px]" />
+                    
+                    {/* Early stars */}
+                    <div className="absolute top-10 right-[20%] w-1 h-1 bg-white/60 blur-[1px] animate-pulse" />
                 </motion.div>
              )}
 
-             {/* Night: Deep Calm */}
+             {/* Night: Moon & Stars */}
              {timeOfDay === 'night' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5 }} className="absolute inset-0">
-                    <div className="absolute top-[-30%] right-[-10%] w-[600px] h-[600px] bg-gradient-to-b from-slate-900/5 via-indigo-900/5 to-transparent blur-[80px] rounded-full" />
+                    {/* Moon */}
+                    <motion.div 
+                        initial={{ rotate: -10, opacity: 0 }}
+                        animate={{ rotate: 0, opacity: 1 }}
+                        transition={{ delay: 0.3, duration: 1.2 }}
+                        className="absolute top-16 right-[15%]"
+                    >
+                         {/* SVG Crescent Moon */}
+                         <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">
+                            <path d="M78 52.4C76.25 29.6 56.4 12.25 33.6 14C39.4 6 49.6 1.25 60.25 2.5C79.75 4.75 94 22.25 91.75 41.75C90.5 52.4 84.4 61.25 76.25 66.5C77.75 62 78.4 57.25 78 52.4Z" fill="#F8FAFC" className="dark:fill-slate-100" />
+                         </svg>
+                    </motion.div>
+
+                    {/* Stars with varying opacity and delays */}
+                    <div className="absolute top-[20%] left-[20%] w-1 h-1 bg-white rounded-full animate-pulse" />
+                    <div className="absolute top-[40%] left-[10%] w-0.5 h-0.5 bg-white/50 rounded-full animate-pulse animation-delay-700" />
+                    <div className="absolute top-[15%] right-[40%] w-1 h-1 bg-blue-100/80 rounded-full blur-[0.5px] animate-pulse animation-delay-1500" />
+                    <div className="absolute top-[5%] right-[10%] w-1.5 h-1.5 bg-white rounded-full blur-[1px] animate-pulse animation-delay-1000" />
+                    <div className="absolute top-[30%] right-[20%] w-0.5 h-0.5 bg-white/40 rounded-full animate-pulse" />
+                    
+                    {/* Nebula glow */}
+                    <div className="absolute -top-20 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-indigo-900/30 via-purple-900/10 to-transparent blur-[100px]" />
                 </motion.div>
              )}
         </div>
@@ -461,7 +533,7 @@ const Dashboard = () => {
       {renderGreetings()}
 
       {/* 2. Date Strip */}
-      {renderDateStrip()}
+      {renderDateStrip_REAL()}
 
 
       {/* 3. My Journal Section - DYNAMIC STACK */}
@@ -513,16 +585,31 @@ const Dashboard = () => {
                         }
 
                         // 2. IMPORTANT EVENTS (Birthday / Holidays / Weekend)
-                        // Mock Birthday Logic (e.g., Jan 15)
-                        if (monthDay === '01-15') { // Example Birthday
-                             stack.push({
-                                id: 'birthday',
-                                type: 'event',
-                                title: 'Happy Birthday! 🎂',
-                                desc: 'Wishing you a fantastic year ahead!',
-                                bg: 'bg-pink-100 dark:bg-pink-900/40',
-                                accent: 'text-pink-500',
-                                zIndex: 40
+                        if (importantDates && importantDates.length > 0) {
+                            const events = importantDates.filter(d => d.date && format(parseISO(d.date), 'MM-dd') === monthDay);
+
+                            events.forEach((evt, idx) => {
+                                // Map Types to Visuals
+                                const TYPE_MAP = {
+                                    'Birthday': { emoji: '🎂', bg: 'bg-pink-100 dark:bg-pink-900/40', text: 'text-pink-600 dark:text-pink-400' },
+                                    'Anniversary': { emoji: '💍', bg: 'bg-purple-100 dark:bg-purple-900/40', text: 'text-purple-600 dark:text-purple-400' },
+                                    'Meeting': { emoji: '🤝', bg: 'bg-orange-100 dark:bg-orange-900/40', text: 'text-orange-600 dark:text-orange-400' },
+                                    'Remember': { emoji: '🎗️', bg: 'bg-indigo-100 dark:bg-indigo-900/40', text: 'text-indigo-600 dark:text-indigo-400' },
+                                    'Design': { emoji: '🎨', bg: 'bg-emerald-100 dark:bg-emerald-900/40', text: 'text-emerald-600 dark:text-emerald-400' },
+                                    'Custom': { emoji: '✨', bg: 'bg-blue-100 dark:bg-blue-900/40', text: 'text-blue-600 dark:text-blue-400' }, 
+                                };
+
+                                const style = TYPE_MAP[evt.type] || TYPE_MAP['Custom'];
+
+                                stack.push({
+                                    id: `event-${evt.id || idx}`,
+                                    type: 'event',
+                                    title: `${evt.text} ${style.emoji}`,
+                                    desc: evt.description || 'Don\'t forget for this special day!',
+                                    bg: style.bg,
+                                    accent: style.text,
+                                    zIndex: 60 + idx // Higher priority than prompt(50)
+                                });
                             });
                         }
 
@@ -559,6 +646,9 @@ const Dashboard = () => {
 
                         // Filter out dismissed
                         stack = stack.filter(c => !dismissedCards.includes(c.id));
+
+                        // Sort by Priority (Highest Z-Index First)
+                        stack.sort((a, b) => b.zIndex - a.zIndex);
 
                         if (stack.length === 0) {
                             // Empty State
@@ -604,8 +694,14 @@ const Dashboard = () => {
                             
                             if (card.type === 'prompt') {
                                  content = (
-                                    <div className={`${card.bg} ${baseStyle} p-8 text-amber-900 dark:text-amber-50`}>
-                                         <div className="relative z-10 flex flex-col justify-between h-full">
+                                    <div 
+                                        onClick={(e) => { 
+                                            // Handle main card click
+                                            setIsModalOpen(true); 
+                                        }}
+                                        className={`${card.bg} ${baseStyle} p-8 text-amber-900 dark:text-amber-50 group`}
+                                    >
+                                         <div className="relative z-10 flex flex-col justify-between h-full pointer-events-none">
                                             <div>
                                                 <h3 className="text-3xl font-black text-gray-900 dark:text-white mb-2 leading-tight">
                                                      {timeOfDay === 'morning' ? "Let's start your day" : "How is your day?"}
@@ -620,10 +716,16 @@ const Dashboard = () => {
                                                 )}
                                             </div>
                                             
-                                            <div className="flex items-center gap-2">
-                                                <span className="px-4 py-2 bg-black/10 dark:bg-white/20 backdrop-blur-sm rounded-full text-sm font-bold text-gray-900 dark:text-white">
+                                            <div className="flex items-center gap-2 pointer-events-auto">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setIsModalOpen(true);
+                                                    }}
+                                                    className="px-4 py-2 bg-black/10 dark:bg-white/20 backdrop-blur-sm rounded-full text-sm font-bold text-gray-900 dark:text-white hover:bg-black/20 dark:hover:bg-white/30 transition-colors"
+                                                >
                                                     Tap to Log
-                                                </span>
+                                                </button>
                                             </div>
                                         </div>
 
@@ -651,8 +753,14 @@ const Dashboard = () => {
                                  );
                             } else if (card.type === 'missed') {
                                 content = (
-                                   <div className={`${card.bg} ${baseStyle} p-8 text-red-900 dark:text-red-50 overflow-hidden`}>
-                                        <div className="relative z-10 flex flex-col justify-between h-full">
+                                   <div 
+                                        onClick={(e) => { 
+                                            // Make whole card clickable
+                                            setIsModalOpen(true); 
+                                        }}
+                                        className={`${card.bg} ${baseStyle} p-8 text-red-900 dark:text-red-50 overflow-hidden cursor-pointer group`}
+                                   >
+                                        <div className="relative z-10 flex flex-col justify-between h-full pointer-events-none">
                                            <div>
                                                <h3 className="text-3xl font-black text-gray-900 dark:text-white mb-3 leading-tight">
                                                     You missed a log
@@ -662,7 +770,7 @@ const Dashboard = () => {
                                                </p>
                                            </div>
                                            
-                                           <div className="flex items-center gap-2">
+                                           <div className="flex items-center gap-2 pointer-events-auto">
                                                <button 
                                                    onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
                                                    className="px-6 py-3 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-500 text-white rounded-full text-sm font-bold shadow-lg shadow-red-200 dark:shadow-none transition-all flex items-center gap-2"
@@ -674,7 +782,7 @@ const Dashboard = () => {
                                        </div>
 
                                        {/* Sad Sun Graphic */}
-                                       <div className="absolute -bottom-12 -right-12 transform rotate-12 opacity-90 grayscale-[0.2]">
+                                       <div className="absolute -bottom-12 -right-12 transform rotate-12 opacity-90 grayscale-[0.2] group-hover:rotate-0 transition-transform duration-500">
                                            <div className="relative w-48 h-48 bg-red-300 rounded-full border-4 border-red-200 flex items-center justify-center shadow-inner">
                                                <div className="w-32 h-32 bg-red-200/50 rounded-full blur-md absolute top-4 left-4"></div>
                                                {/* Face */}
@@ -913,7 +1021,6 @@ const Dashboard = () => {
                                     animate={{ opacity, scale, y: translateY, rotate: rotate, zIndex, x: 0 }}
                                     exit={{ opacity: 0, x: -200, transition: { duration: 0.2 } }}
                                     transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                                    onClick={() => card.type === 'prompt' ? setIsModalOpen(true) : null}
                                     {...dragProps}
                                     style={{ touchAction: 'none', transformOrigin: "bottom center" }}
                                     className="absolute inset-x-0 h-full"
@@ -964,6 +1071,7 @@ const Dashboard = () => {
                        orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-100',
                        blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-100',
                        yellow: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-100',
+                       pink: 'bg-pink-100 dark:bg-pink-900/50 text-pink-100',
                    };
                    const bgClass = colors[link.color] || colors.rose;
                    // const textClass = `text-${link.color}-500`; // Simplify text color for badge
@@ -1029,20 +1137,20 @@ const Dashboard = () => {
             isOpen={!!activeQuickTool}
             onClose={() => setActiveQuickTool(null)}
             tool={activeQuickTool}
+            onUpdate={async () => {
+                // Refresh Important Dates if that was the tool used
+                 if (activeQuickTool.type === 'important-dates') {
+                    try {
+                        const datesRef = doc(db, 'users', currentUser.uid, 'tools', 'important_dates');
+                        const datesSnap = await getDoc(datesRef);
+                        if (datesSnap.exists()) {
+                            setImportantDates(datesSnap.data().items || []);
+                        }
+                    } catch (e) { console.error(e); }
+                }
+            }}
         />
       )}
-
-      <DailyLogWizard 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        date={selectedDate}
-        initialData={logs[selectedDate]}
-        onSave={(data) => {
-            setLogs(prev => ({ ...prev, [selectedDate]: data }));
-            setIsModalOpen(false);
-            toast.success('Journal saved successfully!');
-        }}
-      />
       
       <AppGuide 
            isOpen={isAppGuideOpen}
@@ -1055,6 +1163,20 @@ const Dashboard = () => {
         onDateSelect={handleOpenLog}
         logs={logs}
       />
+
+      <AnimatePresence>
+        {isModalOpen && (
+            <DailyLogWizard 
+                isOpen={isModalOpen} 
+                onClose={() => setIsModalOpen(false)} 
+                date={selectedDate}
+                initialData={logs[selectedDate]}
+                onSave={(newLog) => {
+                    setLogs(prev => ({ ...prev, [newLog.date]: newLog }));
+                }}
+            />
+        )}
+      </AnimatePresence>
 
       </div>
       </div>

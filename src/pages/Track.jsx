@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   format, 
   subDays,
-  isFuture,
-  isToday,
-  startOfMonth,
-  endOfMonth
+  isToday, 
+  startOfMonth, 
+  endOfMonth,
+  isFuture
 } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
@@ -21,332 +21,250 @@ import {
     FiHeart, 
     FiShield, 
     FiTrash2, 
-    FiEdit2, 
     FiSettings,
-    FiX,
     FiCheck,
+    FiX,
     FiInfo
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
-// Helper for Habit Configuration (Icon & Color)
+// --- CONFIGURATION & HELPERS ---
+
 const getHabitConfig = (name) => {
     const lower = name.toLowerCase();
-    
-    // Default Style
+    // Default
     let config = { 
         icon: <FiZap />, 
         color: 'text-gray-600', 
-        bg: 'bg-gray-100 dark:bg-gray-800', 
-        fill: 'bg-gray-400' 
+        bg: 'bg-gray-100 dark:bg-gray-800',
+        activeFill: 'bg-black dark:bg-white',
+        text: 'text-gray-500' 
     };
 
-    if (lower.includes('workout') || lower.includes('gym') || lower.includes('run')) {
-        config = { icon: <FiActivity />, color: 'text-rose-500', bg: 'bg-rose-100 dark:bg-rose-900/30', fill: 'bg-rose-500' };
-    } else if (lower.includes('yoga') || lower.includes('exercise')) {
-        config = { icon: <FiActivity />, color: 'text-teal-500', bg: 'bg-teal-100 dark:bg-teal-900/30', fill: 'bg-teal-500' };
+    if (lower.includes('workout') || lower.includes('gym') || lower.includes('exercise')) {
+        config = { icon: <FiActivity />, color: 'text-teal-600', bg: 'bg-teal-100 dark:bg-teal-900/30', activeFill: 'bg-teal-500', text: 'text-teal-500' };
     } else if (lower.includes('water') || lower.includes('drink')) {
-        config = { icon: <FiDroplet />, color: 'text-cyan-500', bg: 'bg-cyan-100 dark:bg-cyan-900/30', fill: 'bg-cyan-400' };
+        config = { icon: <FiDroplet />, color: 'text-cyan-600', bg: 'bg-cyan-100 dark:bg-cyan-900/30', activeFill: 'bg-cyan-500', text: 'text-cyan-500' };
     } else if (lower.includes('read') || lower.includes('book') || lower.includes('study')) {
-        config = { icon: <FiBook />, color: 'text-amber-500', bg: 'bg-amber-100 dark:bg-amber-900/30', fill: 'bg-amber-400' };
-    } else if (lower.includes('sleep') || lower.includes('meditation') || lower.includes('rest')) {
-        config = { icon: <FiMoon />, color: 'text-indigo-500', bg: 'bg-indigo-100 dark:bg-indigo-900/30', fill: 'bg-indigo-500' };
+        config = { icon: <FiBook />, color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30', activeFill: 'bg-amber-500', text: 'text-amber-500' };
+    } else if (lower.includes('sleep') || lower.includes('rest')) {
+        config = { icon: <FiMoon />, color: 'text-indigo-600', bg: 'bg-indigo-100 dark:bg-indigo-900/30', activeFill: 'bg-indigo-500', text: 'text-indigo-500' };
+    } else if (lower.includes('food') || lower.includes('diet') || lower.includes('junk')) {
+         config = { icon: <FiShield />, color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-900/30', activeFill: 'bg-green-500', text: 'text-green-500' };
     } else if (lower.includes('quality time') || lower.includes('family') || lower.includes('love')) {
-         config = { icon: <FiHeart />, color: 'text-pink-500', bg: 'bg-pink-100 dark:bg-pink-900/30', fill: 'bg-pink-500' };
-    } else if (lower.includes('junk') || lower.includes('eat') || lower.includes('food')) {
-         config = { icon: <FiShield />, color: 'text-green-500', bg: 'bg-green-100 dark:bg-green-900/30', fill: 'bg-green-500' };
-    } else if (lower.includes('period') || lower.includes('cycle')) {
-         config = { icon: <FiDroplet />, color: 'text-rose-600', bg: 'bg-rose-100 dark:bg-rose-900/30', fill: 'bg-rose-600' };
+         config = { icon: <FiHeart />, color: 'text-pink-600', bg: 'bg-pink-100 dark:bg-pink-900/30', activeFill: 'bg-pink-500', text: 'text-pink-500' };
     } else if (lower.includes('work') || lower.includes('job')) {
-        config = { icon: <FiBriefcase />, color: 'text-slate-600', bg: 'bg-slate-200 dark:bg-slate-800', fill: 'bg-slate-500' };
+        config = { icon: <FiBriefcase />, color: 'text-slate-600', bg: 'bg-slate-200 dark:bg-slate-800', activeFill: 'bg-slate-500', text: 'text-slate-500' };
     }
-
     return config;
 };
 
 const BASE_HABITS = ['Exercise / Yoga', 'Quality Time', 'Read 10 mins', 'Sleep < 11PM', 'No Junk Food', 'Workout'];
+
+// --- COMPONENTS ---
 
 const HabitGuide = ({ onClose }) => (
     <motion.div 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
     >
         <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }} 
+            initial={{ scale: 0.95, opacity: 0 }} 
             animate={{ scale: 1, opacity: 1 }}
-            className="bg-white dark:bg-gray-900 w-full max-w-md rounded-3xl p-6 md:p-8 shadow-2xl relative border border-gray-100 dark:border-gray-800"
+            className="bg-white dark:bg-[#121212] w-full max-w-md rounded-3xl p-8 shadow-2xl relative border border-gray-100 dark:border-gray-800"
         >
-            <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
                 <FiX size={20} className="text-gray-400" />
             </button>
-
-            <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mb-6 text-3xl">
-                <FiActivity />
-            </div>
-
-            <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-3">Track Your Growth</h2>
-            <p className="text-gray-500 dark:text-gray-400 leading-relaxed mb-8">
-                Consistency is key. Here you can track your daily habits, visualize streaks, and build a better routine.
+            <h2 className="text-2xl font-bold mb-2 dark:text-white">Welcome to Habits</h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+                Consistency is the bridge between goals and accomplishment. Track your daily progress here.
             </p>
-
-            <div className="space-y-4 mb-8">
-                <div className="flex gap-4">
-                    <div className="w-8 h-8 rounded-lg bg-green-100 text-green-600 flex items-center justify-center shrink-0"><FiEdit2 size={14} /></div>
-                    <div>
-                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">Customize</h4>
-                        <p className="text-xs text-gray-500">Remove default habits or add your own unique ones.</p>
-                    </div>
-                </div>
-                <div className="flex gap-4">
-                    <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0"><FiZap size={14} /></div>
-                    <div>
-                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">Streaks</h4>
-                        <p className="text-xs text-gray-500">Keep the streak alive to build momentum.</p>
-                    </div>
-                </div>
-            </div>
-
-            <button 
-                onClick={onClose}
-                className="w-full py-4 rounded-xl bg-black dark:bg-white text-white dark:text-black font-bold text-lg active:scale-95 transition-transform"
-            >
-                Get Started
-            </button>
+            <button onClick={onClose} className="w-full bg-black dark:bg-white text-white dark:text-black font-bold py-3.5 rounded-xl">Let's Go</button>
         </motion.div>
     </motion.div>
 );
 
-
-const ConfirmDeleteModal = ({ habit, onConfirm, onCancel }) => (
-    <motion.div 
-        initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-    >
-        <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }} 
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white dark:bg-gray-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-gray-100 dark:border-gray-800 text-center"
-        >
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
-                <FiTrash2 />
+const DeleteConfirm = ({ habit, onConfirm, onCancel }) => (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="bg-white dark:bg-[#1C1C1E] p-6 rounded-3xl max-w-xs w-full shadow-2xl border border-gray-200 dark:border-gray-800">
+            <h3 className="font-bold text-lg mb-2 dark:text-white">Delete "{habit}"?</h3>
+            <p className="text-sm text-gray-500 mb-6">This will remove it from your list. History is preserved.</p>
+            <div className="flex gap-3">
+                <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 font-semibold text-sm">Cancel</button>
+                <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-semibold text-sm">Delete</button>
             </div>
-            
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Delete Habit?</h3>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
-                Are you sure you want to stop tracking <span className="font-bold text-gray-900 dark:text-white">"{habit}"</span>?
-                <br/>History will remain in your logs.
-            </p>
-
-            <div className="grid grid-cols-2 gap-3">
-                <button 
-                    onClick={onCancel}
-                    className="py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                >
-                    Cancel
-                </button>
-                <button 
-                    onClick={onConfirm}
-                    className="py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors shadow-lg shadow-red-200 dark:shadow-none"
-                >
-                    Delete
-                </button>
-            </div>
-        </motion.div>
-    </motion.div>
+        </div>
+    </div>
 );
+
+// --- MAIN PAGE ---
 
 const Track = () => {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(true);
-    const [logs, setLogs] = useState({});
-    const [trackedHabits, setTrackedHabits] = useState([]);
+    
+    // UI State
     const [isEditing, setIsEditing] = useState(false);
     const [showGuide, setShowGuide] = useState(false);
     const [habitToDelete, setHabitToDelete] = useState(null);
-    
-    // We show last 5 days including today
+    const [loading, setLoading] = useState(true);
+
+    // Data State
+    const [logs, setLogs] = useState({});
+    const [trackedHabits, setTrackedHabits] = useState([]);
     const [displayDates, setDisplayDates] = useState([]);
 
-    // Check First Time Text
+    // --- COMPUTED DATES (Last 5 Days) ---
     useEffect(() => {
-        const hasSeen = localStorage.getItem('hasSeenHabitGuide_v2');
-        if (!hasSeen) {
-            setShowGuide(true);
-        }
-    }, []);
-
-    const closeGuide = () => {
-        localStorage.setItem('hasSeenHabitGuide_v2', 'true');
-        setShowGuide(false);
-    }
-    
-    // Init Dates
-    useEffect(() => {
-        const today = new Date();
-        // Generate last 5 days
+        // Generate last 5 days including today
         const dates = [];
+        const today = new Date();
         for (let i = 4; i >= 0; i--) {
             dates.push(subDays(today, i));
         }
         setDisplayDates(dates);
     }, []);
 
-    // Load Data
+    // --- EFFECTS ---
+
+    // 1. First Time Guide
+    useEffect(() => {
+        const hasSeen = localStorage.getItem('hasSeenHabitGuide_v3');
+        if (!hasSeen) setShowGuide(true);
+    }, []);
+
+    const closeGuide = () => {
+        localStorage.setItem('hasSeenHabitGuide_v3', 'true');
+        setShowGuide(false);
+    };
+
+    // 2. Fetch Data
     useEffect(() => {
         if (!currentUser || displayDates.length === 0) return;
         
-        const fetchLogs = async () => {
+        const fetchData = async () => {
             setLoading(true);
             try {
-                // Fetch a range to cover displayed dates + some buffer for streaks (e.g. current month)
-                // For simplicity, let's just fetch current month or +/- 7 days range
-                const startStr = format(displayDates[0], 'yyyy-MM-dd');
-                const endStr = format(displayDates[displayDates.length - 1], 'yyyy-MM-dd');
+                // Fetch context: Start of first date to end of last date (simple range)
+                const startRange = format(displayDates[0], 'yyyy-MM-dd');
+                const endRange = format(displayDates[displayDates.length - 1], 'yyyy-MM-dd');
+
+                // Extend fetch range to catch streaks (e.g. current month)
+                const streakStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
                 
                 const logsRef = collection(db, 'users', currentUser.uid, 'logs');
-                // Note: ideally query a larger range for streak calc, but for now simple
-                const startMonth = startOfMonth(new Date());
-                const endMonth = endOfMonth(new Date());
-                
-                const q = query(logsRef, where('date', '>=', format(startMonth, 'yyyy-MM-dd')), where('date', '<=', format(endMonth, 'yyyy-MM-dd')));
+                // We'll query from streakStart to now to get decent streak data
+                const q = query(logsRef, where('date', '>=', streakStart));
                 const snap = await getDocs(q);
                 
                 const data = {};
-                const foundHabits = new Set();
-                
-                snap.forEach(doc => {
-                    const log = doc.data();
-                    data[doc.id] = log;
-                    if (log.habits) log.habits.forEach(h => foundHabits.add(h));
-                });
-                
+                snap.forEach(doc => { data[doc.id] = doc.data(); });
                 setLogs(data);
 
-                // Initialize Habits logic
-                // If local storage exists, use it.
-                // If NOT, use BASE_HABITS + Gender logic, and SAVE it to local storage.
-                const saved = localStorage.getItem('user_tracked_habits');
-                let initial = [];
-
-                if (saved) {
-                    try {
-                         initial = JSON.parse(saved);
-                    } catch(e){
-                        initial = [...BASE_HABITS];
-                    }
+                // Load tracked habits from LocalStorage or Default
+                const savedHabits = localStorage.getItem('user_tracked_habits');
+                if (savedHabits) {
+                    setTrackedHabits(JSON.parse(savedHabits));
                 } else {
-                    initial = [...BASE_HABITS];
-                    if (currentUser?.gender && currentUser.gender.toLowerCase() === 'female') {
-                        initial.push('Periods');
-                    }
-                    localStorage.setItem('user_tracked_habits', JSON.stringify(initial));
+                    const defaults = [...BASE_HABITS];
+                    if (currentUser?.gender?.toLowerCase() === 'female') defaults.push('Period Tracker');
+                    setTrackedHabits(defaults);
+                    localStorage.setItem('user_tracked_habits', JSON.stringify(defaults));
                 }
 
-                // If habits were found in logs that are NOT in the list, should we add them?
-                // For now, let's keep the user's explicit list as the source of truth for the UI list.
-                // But we can merge if we want historical habits to reappear.
-                // Let's just stick to 'user_tracked_habits' for the UI rows.
-                
-                setTrackedHabits(initial);
-                
-            } catch (err) {
-                console.error(err);
+            } catch (error) {
+                console.error("Error loading habits:", error);
+                toast.error("Could not load habit data");
             } finally {
                 setLoading(false);
             }
         };
-        fetchLogs();
-    }, [currentUser, displayDates]);
 
+        fetchData();
+    }, [currentUser, displayDates]); 
+
+    // --- HANDLERS ---
 
     const toggleHabit = async (dateStr, habit) => {
-        const existingLog = logs[dateStr] || {};
-        const currentHabits = existingLog.habits || [];
+        // 1. Optimistic Update
+        const oldLogs = { ...logs };
+        const dayLog = logs[dateStr] || {};
+        const currentHabits = dayLog.habits || [];
         const isDone = currentHabits.includes(habit);
         
-        let newHabits;
+        let newHabitsList;
         if (isDone) {
-            newHabits = currentHabits.filter(h => h !== habit);
+            newHabitsList = currentHabits.filter(h => h !== habit);
         } else {
-            newHabits = [...currentHabits, habit];
+            newHabitsList = [...currentHabits, habit];
         }
 
-        // Optimistic
         setLogs(prev => ({
             ...prev,
-            [dateStr]: { ...existingLog, habits: newHabits } 
+            [dateStr]: { ...dayLog, habits: newHabitsList }
         }));
 
+        // 2. Persist
         try {
             const logRef = doc(db, 'users', currentUser.uid, 'logs', dateStr);
-            await setDoc(logRef, { habits: newHabits, date: dateStr }, { merge: true });
-        } catch (e) {
-            console.error(e);
-            toast.error("Failed to save");
+            await setDoc(logRef, { habits: newHabitsList, date: dateStr }, { merge: true });
+        } catch (error) {
+            console.error("Save failed", error);
+            setLogs(oldLogs); // Revert
+            toast.error("Failed to save changes");
         }
-    };
-
-    const initiateDelete = (habit) => {
-        setHabitToDelete(habit);
     };
 
     const confirmDelete = () => {
         if (!habitToDelete) return;
-        
         const newList = trackedHabits.filter(h => h !== habitToDelete);
         setTrackedHabits(newList);
         localStorage.setItem('user_tracked_habits', JSON.stringify(newList));
-        toast.success('Habit removed');
+        toast.success("Habit removed");
         setHabitToDelete(null);
     };
 
-    const addNewHabit = () => {
-        navigate('/add-habit');
-    };
-
-    const calculateStreak = (habit) => {
-        // Simple streak logic: check backwards from Today
+    const calculateSimpleStreak = (habit) => {
+        // UI approximation for streak
         let streak = 0;
-        const today = new Date();
-        let current = today; // check today first
+        let d = new Date();
+        const todayStr = format(d, 'yyyy-MM-dd');
         
-        // If not done today, check yesterday to safe-keep streak
-        const todayStr = format(today, 'yyyy-MM-dd');
-        const doneToday = logs[todayStr]?.habits?.includes(habit);
-        
-        if (!doneToday) {
-            current = subDays(today, 1);
+        // If done today
+        if (logs[todayStr]?.habits?.includes(habit)) {
+            streak++;
+            d = subDays(d, 1);
+        } else {
+            // Check yesterday
+            d = subDays(d, 1);
+            if (!logs[format(d, 'yyyy-MM-dd')]?.habits?.includes(habit)) {
+                return 0; // Broken
+            }
         }
 
-        while(true) {
-            const dStr = format(current, 'yyyy-MM-dd');
-            if (logs[dStr]?.habits?.includes(habit)) {
+        for (let i = 0; i < 365; i++) { 
+            const str = format(d, 'yyyy-MM-dd');
+            if (logs[str]?.habits?.includes(habit)) {
                 streak++;
-                current = subDays(current, 1);
+                d = subDays(d, 1);
             } else {
                 break;
             }
-            if (streak > 365) break; 
         }
-        
-        if (streak === 0) return "Start today";
-        return `${streak} day${streak > 1 ? 's' : ''} streak`;
+        return streak;
     };
 
     return (
-        <div className="min-h-screen relative overflow-hidden bg-white dark:bg-black transition-colors duration-500">
-            
-            <AnimatePresence>
+        <div className="min-h-screen bg-white dark:bg-[#000000] text-gray-900 dark:text-white font-sans transition-colors duration-300">
+             <AnimatePresence>
                 {showGuide && <HabitGuide onClose={closeGuide} />}
                 {habitToDelete && (
-                    <ConfirmDeleteModal 
+                    <DeleteConfirm 
                         habit={habitToDelete} 
                         onConfirm={confirmDelete} 
                         onCancel={() => setHabitToDelete(null)} 
@@ -354,128 +272,137 @@ const Track = () => {
                 )}
             </AnimatePresence>
 
-            <div className="relative z-10 p-6 md:p-8 pb-32 max-w-2xl mx-auto">
-                
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Habits</h1>
-                        <button onClick={() => setShowGuide(true)} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                            <FiInfo size={18} />
-                        </button>
+            {/* --- HEADER --- */}
+            <div className="pt-12 px-6 pb-2">
+                <div className="flex justify-between items-center mb-10">
+                    <div className="flex items-center gap-2">
+                         <h1 className="text-3xl font-bold tracking-tight">Habits</h1>
+                         <button onClick={() => setShowGuide(true)} className="text-gray-300 hover:text-gray-500 transition-colors">
+                             <FiInfo size={20} />
+                         </button>
                     </div>
                     <button 
                         onClick={() => setIsEditing(!isEditing)}
-                        className={`p-3 rounded-xl transition-all ${isEditing ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}
+                        className={`p-2.5 rounded-xl transition-all ${isEditing ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-gray-100 dark:bg-[#1C1C1E] text-gray-500 dark:text-gray-400'}`}
                     >
-                         {isEditing ? <FiCheck /> : <FiSettings />}
+                         {isEditing ? <FiCheck size={18} /> : <FiSettings size={18} />}
                     </button>
                 </div>
+            </div>
 
-                {/* Date Headers */}
-                <div className="flex justify-end mb-4 pr-0">
-                     <div className="flex gap-3">
-                         {displayDates.map(date => (
-                             <div key={date.toString()} className="w-8 text-center">
-                                 <span className={`text-xs font-bold uppercase ${isToday(date) ? 'text-black dark:text-white' : 'text-gray-400'}`}>
-                                     {format(date, 'EQQ')} {/* Two letter day name? EEE is 3 letter. */}
-                                     {/* Custom substring for 2 letter */}
-                                     {format(date, 'EEE').substring(0,2)}
-                                 </span>
-                             </div>
-                         ))}
-                     </div>
-                </div>
+            {/* --- CONTENT --- */}
+            <div className="px-6 pb-32">
+                
+                {/* Scrollable Container for List Items */}
+                <div className="w-full">
+                    {/* Header Row (Dates) - Right Aligned */}
+                    <div className="flex justify-end mb-6">
+                        <div className="flex gap-2">
+                            {displayDates.map(date => {
+                                const isTodayDate = isToday(date);
+                                return (
+                                    <div key={date.toString()} className="w-8 flex flex-col items-center">
+                                        <span className="text-[10px] font-bold uppercase text-gray-400">
+                                            {format(date, 'EEE')}
+                                        </span>
+                                        <span className={`text-xs font-bold ${isTodayDate ? 'text-black dark:text-white' : 'text-gray-300 dark:text-gray-600'}`}>
+                                            {format(date, 'dd')}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
 
-                {/* Habits List */}
-                <div className="space-y-6">
-                    {trackedHabits.map((habit, idx) => {
-                        const style = getHabitConfig(habit);
-                        const streak = calculateStreak(habit);
-                        
-                        return (
-                            <motion.div 
-                                key={habit}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: idx * 0.05 }}
-                                className="flex items-center justify-between group"
-                            >
-                                {/* Left Info */}
-                                <div className="flex items-center gap-4 flex-1">
-                                    {isEditing ? (
-                                        <button 
-                                            onClick={() => initiateDelete(habit)}
-                                            className="w-12 h-12 rounded-full bg-red-100 text-red-500 dark:bg-red-900/30 flex items-center justify-center hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-                                        >
-                                            <FiTrash2 size={20} />
-                                        </button>
-                                    ) : (
-                                        <div className={`w-12 h-12 rounded-full ${style.bg} flex items-center justify-center ${style.color} text-xl shadow-sm`}>
-                                            {style.icon}
-                                        </div>
-                                    )}
-                                    
-                                    <div>
-                                        <h3 className="font-bold text-gray-900 dark:text-white text-base leading-tight">{habit}</h3>
-                                        {!isEditing && (
-                                            <div className={`text-xs font-bold uppercase tracking-wide mt-0.5 ${style.color.replace('text-', 'text-opacity-65 text-')}`}>
-                                                {streak}
+                    {/* Habit Rows */}
+                    <div className="space-y-8">
+                        {trackedHabits.map((habit, idx) => {
+                            const style = getHabitConfig(habit);
+                            const streak = calculateSimpleStreak(habit);
+                            const streakText = streak > 0 ? `${streak} DAY STREAK` : 'START TODAY';
+
+                            // Determine active colors based on config
+                            // If streak > 0, we can color the text, else keep it neutral or 'start today' color
+                            const statusColor = streak > 0 ? 'text-green-500' : style.text;
+
+                            return (
+                                <motion.div 
+                                    key={habit}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                    className="flex items-center justify-between group"
+                                >
+                                    {/* Left: Info */}
+                                    <div className="flex items-center gap-4 flex-1 min-w-0 pr-4">
+                                        {isEditing ? (
+                                             <button 
+                                                onClick={() => setHabitToDelete(habit)}
+                                                className="w-12 h-12 rounded-full bg-red-50 text-red-500 dark:bg-red-900/20 flex items-center justify-center shrink-0"
+                                            >
+                                                <FiTrash2 size={20} />
+                                            </button>
+                                        ) : (
+                                            <div className={`w-12 h-12 rounded-full ${style.bg} ${style.color} flex items-center justify-center text-xl shrink-0`}>
+                                                {style.icon}
                                             </div>
                                         )}
-                                    </div>
-                                </div>
-
-                                {/* Right Checks */}
-                                <div className={`flex gap-3 transition-opacity ${isEditing ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
-                                    {displayDates.map(date => {
-                                        const dateStr = format(date, 'yyyy-MM-dd');
-                                        const isDone = logs[dateStr]?.habits?.includes(habit);
-                                        const isFutureDay = isFuture(date);
                                         
-                                        return (
-                                            <button
-                                                key={dateStr}
-                                                disabled={isFutureDay}
-                                                onClick={() => toggleHabit(dateStr, habit)}
-                                                className={`
-                                                    w-8 h-8 rounded-[10px] transition-all duration-300
-                                                    ${isDone 
-                                                        ? `${style.fill} shadow-sm scale-100` 
-                                                        : `bg-gray-100 dark:bg-gray-800 scale-90 hover:scale-100`
-                                                    }
-                                                    ${isFutureDay ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer'}
-                                                `}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            </motion.div>
-                        );
-                    })}
+                                        <div className="flex flex-col">
+                                            <h3 className="font-bold text-gray-900 dark:text-white text-[15px] leading-tight">{habit}</h3>
+                                            {!isEditing && (
+                                                <span className={`text-[10px] font-extrabold uppercase mt-1 tracking-wide ${statusColor}`}>
+                                                    {streakText}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Right: The 5-Day Grid */}
+                                    <div className={`flex gap-2 transition-opacity ${isEditing ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
+                                        {displayDates.map(date => {
+                                            const dateStr = format(date, 'yyyy-MM-dd');
+                                            const isFutureDate = isFuture(date);
+                                            const isDone = logs[dateStr]?.habits?.includes(habit);
+
+                                            return (
+                                                <button
+                                                    key={dateStr}
+                                                    disabled={isFutureDate}
+                                                    onClick={() => toggleHabit(dateStr, habit)}
+                                                    className={`
+                                                        w-8 h-8 rounded-[10px] transition-all duration-200
+                                                        ${isDone ? style.activeFill : 'bg-gray-100 dark:bg-[#1C1C1E]'}
+                                                        ${isFutureDate ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer active:scale-95'}
+                                                    `}
+                                                />
+                                            )
+                                        })}
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
                 </div>
-
-                {/* Floating Add Button (Bottom Right) */}
-                <motion.div 
-                    initial={{ scale: 0 }} animate={{ scale: 1 }}
-                    className="fixed bottom-24 right-6 z-40 md:hidden"
-                >
-                    <button 
-                        onClick={addNewHabit}
-                        className="w-14 h-14 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shadow-2xl shadow-gray-400/50 dark:shadow-none hover:scale-110 active:scale-90 transition-all"
-                    >
-                        <FiPlus size={28} />
-                    </button>
-                </motion.div>
-
+                
                 {/* Empty State */}
-                {trackedHabits.length === 0 && !loading && (
-                    <div className="text-center py-20 text-gray-400">
-                        <p>No habits tracked yet.</p>
-                        <button onClick={addNewHabit} className="text-indigo-500 font-bold mt-2">Add one now</button>
+                {!loading && trackedHabits.length === 0 && (
+                    <div className="text-center py-20 opacity-50">
+                        <p>No habits tracked. Tap + to start.</p>
                     </div>
                 )}
             </div>
+
+            {/* FAB */}
+            <div className="fixed bottom-24 right-5 md:hidden text-white drop-shadow-2xl z-50">
+                <button 
+                    onClick={() => navigate('/add-habit')}
+                    className="w-14 h-14 bg-black dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/20"
+                >
+                    <FiPlus size={24} />
+                </button>
+            </div>
+
         </div>
     );
 };
