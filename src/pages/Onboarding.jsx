@@ -174,7 +174,7 @@ const Onboarding = () => {
         if (step < slides.length - 1) {
             setStep(prev => prev + 1);
         } else {
-            navigate('/register');
+            navigate('/set-mpin');
         }
     };
 
@@ -208,7 +208,7 @@ const Onboarding = () => {
                     ))}
                 </div>
                 <button 
-                    onClick={() => navigate('/register')}
+                    onClick={() => navigate('/set-mpin')}
                     className="text-sm font-bold text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                     Skip

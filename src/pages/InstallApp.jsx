@@ -25,10 +25,19 @@ const InstallApp = () => {
             }
         } else {
             // Fallback for iOS or when prompt is not available
-            toast('Tap the Share icon -> "Add to Home Screen"', {
-                duration: 4000,
-                icon: '📱'
-            });
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            
+            if (isIOS) {
+                toast('Tap the Share icon -> "Add to Home Screen"', {
+                    duration: 4000,
+                    icon: '📱'
+                });
+            } else {
+                 toast('Tap browser menu (⋮) -> Install App / Add to Home Screen', {
+                    duration: 4000,
+                    icon: '📱'
+                });
+            }
         }
     };
 

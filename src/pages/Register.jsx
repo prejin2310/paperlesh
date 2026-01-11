@@ -48,7 +48,7 @@ const Register = () => {
             });
 
             toast.success('Account created successfully!');
-            navigate('/set-mpin');
+            navigate('/onboarding');
         } catch (err) {
             console.error(err);
             if (err.code === 'auth/email-already-in-use') {
