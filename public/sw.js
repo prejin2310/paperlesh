@@ -1,3 +1,61 @@
+/*
+  FIREBASE MESSAGING SERVICE WORKER
+  ---------------------------------
+  1. Add your Firebase Config below manually (env vars don't work in SW)
+  2. This handles background notifications
+*/
+importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
+
+try {
+  firebase.initializeApp({
+    // REPLACE WITH YOUR FIREBASE CONFIG
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  });
+
+  const messaging = firebase.messaging();
+
+  messaging.onBackgroundMessage((payload) => {
+    const notificationTitle = payload.notification?.title || 'JourniQ Update';
+    const notificationOptions = {
+      body: payload.notification?.body || 'Check your journal!',
+      icon: '/pwa-192x192.png',
+      badge: '/pwa-192x192.png',
+      data: payload.data
+    };
+
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  });
+} catch (e) {
+  console.log('Firebase messaging failed to init in SW (expected if config missing):', e);
+}
+
+// Handle Notification Click
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      // Focus if already open
+      for (var i = 0; i < clientList.length; i++) {
+        var client = clientList[i];
+        // Check if the client is focusing on the app
+        if (client.url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Open if not
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
+    })
+  );
+});
+
 const CACHE_NAME = 'journiq-v4';
 const urlsToCache = [
   '/',

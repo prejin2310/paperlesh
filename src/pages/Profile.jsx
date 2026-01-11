@@ -307,7 +307,7 @@ const Profile = () => {
                         </div>
                         <h3 className="text-xl font-black text-center mb-2">Log Out?</h3>
                         <p className="text-center opacity-60 font-medium mb-8">
-                            Are you sure you want to sign out of Journiq? Your data is safe.
+                            Are you sure you want to sign out of MyJournle? Your data is safe.
                         </p>
                         <div className="grid grid-cols-2 gap-4">
                             <button 

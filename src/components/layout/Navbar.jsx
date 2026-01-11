@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { FiHome, FiCheckSquare, FiGrid, FiBook, FiUser, FiLogOut, FiPlus, FiCalendar, FiActivity } from 'react-icons/fi';
+import { FiHome, FiCheckSquare, FiGrid, FiBook, FiUser, FiLogOut, FiPlus, FiCalendar, FiActivity, FiList } from 'react-icons/fi';
 
 const Navbar = () => {
     const location = useLocation();
@@ -11,7 +11,7 @@ const Navbar = () => {
     { to: '/dashboard', icon: <FiHome size={22} />, label: 'Home' },
     { to: '/track', icon: <FiActivity size={22} />, label: 'Habits' },
     { to: '/month', icon: <FiCalendar size={22} />, label: 'Month' },
-    { to: '/logs', icon: <FiGrid size={22} />, label: 'Journal' },
+    { to: '/logs', icon: <FiList size={22} />, label: 'Journal' },
     { to: '/profile', icon: <FiUser size={22} />, label: 'Profile' },
   ];
 
@@ -70,7 +70,7 @@ const Navbar = () => {
       {/* Desktop Side Navigation */}
       <nav className="hidden md:flex flex-col w-72 bg-white dark:bg-black border-r border-gray-100 dark:border-gray-900 h-screen sticky top-0 p-6">
         <div className="mb-10 px-2">
-          <h1 className="text-3xl font-black tracking-tighter text-black dark:text-white">MyJournle.</h1>
+          <img src="/lan.png" alt="MyJournle" className="h-10 object-contain" />
         </div>
         
         <div className="flex-1 space-y-2">

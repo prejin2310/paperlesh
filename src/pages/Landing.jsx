@@ -95,8 +95,7 @@ const Landing = () => {
             <nav className={`fixed top-0 w-full z-50 backdrop-blur-xl border-b transition-colors duration-300 ${isDarkMode ? 'bg-slate-950/60 border-slate-800' : 'bg-white/60 border-white/20'}`}>
                 <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                         <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/20">M</div>
-                         <span className="text-xl font-bold tracking-tight">MyJournle</span>
+                         <img src="/lan.png" alt="MyJournle" className="h-10 w-auto" />
                     </div>
                     <div className="flex items-center gap-4">
                         <button 
@@ -132,13 +131,9 @@ const Landing = () => {
                 <div className="flex-1 text-center lg:text-left space-y-8">
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}
-                        className={`inline-flex items-center gap-2 px-3 py-1 border rounded-full shadow-sm ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}
+                        className="inline-block mb-4"
                     >
-                        <span className="flex h-2 w-2 relative">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                        </span>
-                        <span className={`text-xs font-bold uppercase tracking-wide ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>PWA Enabled</span>
+                        <img src="/lan.png" alt="MyJournle" className="h-24 w-auto object-contain" />
                     </motion.div>
 
                     <motion.h1 

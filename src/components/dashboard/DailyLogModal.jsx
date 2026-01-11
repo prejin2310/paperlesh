@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FiX, FiCheck, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
+import { FiX, FiCheck, FiChevronRight, FiChevronLeft, FiStar } from 'react-icons/fi';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
-const MOODS = ['😭', '😢', '😐', '🙂', '🤩'];
+const MOODS = ['Fantastic', 'Happy', 'Romantic', 'Normal', 'Tired', 'Stressed', 'Sad', 'Angry'];
+const MOOD_EMOJIS = ['🤩', '🙂', '🥰', '😐', '😴', '😫', '😭', '😡'];
+
 // Updated Weather options
 const WEATHER_OPTIONS = [
   { label: 'Sunny', color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-300' },
@@ -19,10 +21,12 @@ const WEATHER_OPTIONS = [
   { label: 'Hot', color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-300' }
 ];
 
-const STEPS_OPTIONS = ['0', '<1000', '<2500', '<5000', '>5000'];
+const STEPS_OPTIONS = ['1k - 2.5K', '2.5k-5k', '5k-10k', '>10k'];
 
 // Updated Habits list logic will be handled via state
 const DEFAULT_HABITS = ['Workout', 'Skin Care', 'Wake up early', 'Meditation', 'Periods'];
+
+const SPEND_OPTIONS = ['0', '<500', '<1000', '<2500', '<5000', '>5000'];
 
 const DailyLogModal = ({ isOpen, onClose, date, initialData, onSave }) => {
   const { currentUser } = useAuth();
@@ -32,10 +36,10 @@ const DailyLogModal = ({ isOpen, onClose, date, initialData, onSave }) => {
   
   const [formData, setFormData] = useState({
     note: '',
-    mood: 2,
+    mood: 3, // Default to Normal (index 3)
     rating: 3,
-    spend: '',
-    steps: '<2500',
+    spend: '0',
+    steps: '1k - 2.5K',
     sleep: 7,
     weather: [],
     
@@ -71,10 +75,10 @@ const DailyLogModal = ({ isOpen, onClose, date, initialData, onSave }) => {
       if (initialData) {
         setFormData({
             note: initialData.note || '',
-            mood: initialData.mood !== undefined ? initialData.mood : 2,
+            mood: initialData.mood !== undefined ? initialData.mood : 3,
             rating: initialData.rating || 3,
-            spend: initialData.spend || '',
-            steps: initialData.steps || '<2500',
+            spend: initialData.spend !== undefined ? initialData.spend : '0',
+            steps: initialData.steps || '1k - 2.5K',
             sleep: initialData.sleep || 7,
             weather: initialData.weather || [],
             
@@ -93,10 +97,10 @@ const DailyLogModal = ({ isOpen, onClose, date, initialData, onSave }) => {
         // Reset defaults
         setFormData({
             note: '',
-            mood: 2,
+            mood: 3,
             rating: 3,
-            spend: '',
-            steps: '<2500',
+            spend: '0',
+            steps: '1k - 2.5K',
             sleep: 7,
             weather: [],
             habits: [],
@@ -216,32 +220,35 @@ const DailyLogModal = ({ isOpen, onClose, date, initialData, onSave }) => {
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-white dark:bg-gray-800 p-4 rounded-3xl shadow-sm space-y-3">
                                 <label className="text-xs font-bold uppercase tracking-widest text-orange-400">Day Rating</label>
-                                <div className="flex justify-between">
+                                <div className="flex justify-between px-2">
                                     {[1, 2, 3, 4, 5].map((s) => (
                                         <button
                                             key={s}
                                             onClick={() => setFormData(prev => ({ ...prev, rating: s }))}
-                                            className={`w-10 h-10 rounded-full font-bold transition-all ${
-                                                formData.rating >= s ? 'bg-orange-400 text-white shadow-lg shadow-orange-200' : 'bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-500'
-                                            }`}
+                                            className="transition-transform active:scale-90"
                                         >
-                                            {s}
+                                            <FiStar 
+                                                className={`w-8 h-8 ${
+                                                    formData.rating >= s ? 'fill-orange-400 text-orange-400' : 'text-gray-200 dark:text-gray-700'
+                                                }`} 
+                                            />
                                         </button>
                                     ))}
                                 </div>
                             </div>
                             <div className="bg-white dark:bg-gray-800 p-4 rounded-3xl shadow-sm space-y-3">
                                 <label className="text-xs font-bold uppercase tracking-widest text-blue-400">Mood</label>
-                                <div className="flex justify-between">
+                                <div className="flex flex-wrap gap-2 justify-center">
                                     {MOODS.map((m, i) => (
                                         <button
                                             key={i}
                                             onClick={() => setFormData(prev => ({ ...prev, mood: i }))}
-                                            className={`text-2xl transition-transform ${
-                                                formData.mood === i ? 'scale-125' : 'opacity-40 grayscale'
+                                            title={m}
+                                            className={`text-2xl transition-transform p-1 rounded-lg ${
+                                                formData.mood === i ? 'bg-blue-50 scale-125' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'
                                             }`}
                                         >
-                                            {m}
+                                            {MOOD_EMOJIS[i]}
                                         </button>
                                     ))}
                                 </div>
@@ -252,16 +259,13 @@ const DailyLogModal = ({ isOpen, onClose, date, initialData, onSave }) => {
                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Spend</label>
-                                <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-gray-400 dark:text-gray-500">$</span>
-                                    <input 
-                                        type="number"
-                                        value={formData.spend}
-                                        onChange={e => setFormData(prev => ({ ...prev, spend: e.target.value }))}
-                                        className="w-full bg-white dark:bg-gray-800 rounded-2xl py-4 pl-8 pr-4 font-bold text-lg text-gray-900 dark:text-white shadow-sm outline-none focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900"
-                                        placeholder="0.00"
-                                    />
-                                </div>
+                                <select 
+                                    value={formData.spend}
+                                    onChange={e => setFormData(prev => ({ ...prev, spend: e.target.value }))}
+                                    className="w-full bg-white dark:bg-gray-800 rounded-2xl py-4 px-4 font-bold text-gray-900 dark:text-white shadow-sm outline-none focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900 appearance-none"
+                                >
+                                    {SPEND_OPTIONS.map(opt => <option key={opt} value={opt} className="dark:bg-gray-800">{opt}</option>)}
+                                </select>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Steps</label>

@@ -84,7 +84,7 @@ const Login = () => {
             >
                 <FiChevronLeft size={24} />
             </Link>
-            <div className="font-bold text-xl tracking-tight">MyJournle</div>
+            <img src="/lan.png" alt="MyJournle" className="h-8 object-contain" />
             <div className="w-10"></div> {/* Spacer */}
        </div>
 

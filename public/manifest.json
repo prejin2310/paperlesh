@@ -6,11 +6,15 @@
   "background_color": "#FDFBF9",
   "theme_color": "#000000",
   "description": "Track your mood, money, and habits in one place.",
+  "gcm_sender_id": "103953800507",
+  "permissions": [
+      "gcm" 
+  ],
   "icons": [
     {
-      "src": "vite.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "src": "/logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
     }
   ]
 }

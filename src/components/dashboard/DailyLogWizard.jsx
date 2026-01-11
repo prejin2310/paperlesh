@@ -8,14 +8,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 const MOODS = [
-    { emoji: '😊', label: 'Happy' },
     { emoji: '🤩', label: 'Fantastic' },
+    { emoji: '😊', label: 'Happy' },
     { emoji: '🥰', label: 'Romantic' },
     { emoji: '😐', label: 'Normal' },
-    { emoji: '😫', label: 'Stressed' },
     { emoji: '😴', label: 'Tired' },
-    { emoji: '😠', label: 'Angry' },
-    { emoji: '😢', label: 'Sad' }
+    { emoji: '😫', label: 'Stressed' },
+    { emoji: '😢', label: 'Sad' },
+    { emoji: '😠', label: 'Angry' }
 ];
 
 const WEATHER_OPTIONS = [

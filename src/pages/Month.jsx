@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { db } from '../lib/firebase';
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { FiCalendar, FiSave, FiArrowLeft, FiTrash2, FiEdit2, FiCheckSquare, FiType, FiRefreshCw, FiPlus } from 'react-icons/fi';
+import { doc, setDoc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
+import { FiCalendar, FiSave, FiArrowLeft, FiTrash2, FiEdit2, FiCheckSquare, FiType, FiRefreshCw, FiPlus, FiSmile, FiActivity, FiMoon, FiDollarSign, FiStar, FiMoreHorizontal, FiGrid, FiChevronDown, FiX } from 'react-icons/fi';
 import MonthlyJournalBlock from '../components/feature/MonthlyJournalBlock';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, getDaysInMonth, differenceInDays, eachMonthOfInterval, startOfYear, endOfYear, setMonth, getWeek } from 'date-fns';
+import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
 import debounce from 'lodash.debounce';
 
 const DEFAULT_BLOCKS = [
@@ -22,37 +23,175 @@ const Month = () => {
   const { currentUser } = useAuth();
   const { isDarkMode } = useTheme();
   
-  const currentMonthStr = format(new Date(), 'yyyy-MM');
-  const displayMonth = format(new Date(), 'MMMM yyyy');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showYearView, setShowYearView] = useState(false);
+  const [calendarMetric, setCalendarMetric] = useState('spend'); // Default to spend
+  const [isMetricMenuOpen, setIsMetricMenuOpen] = useState(false);
+  const currentMonthStr = format(selectedDate, 'yyyy-MM');
+  const displayMonth = format(selectedDate, 'MMMM yyyy');
 
   const [blocks, setBlocks] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastSaved, setLastSaved] = useState(null);
   const [editingBlockId, setEditingBlockId] = useState(null);
 
+  // Fetch Blocks & Logs
   useEffect(() => {
     if (!currentUser) return;
+    setLoading(true);
 
-    const docRef = doc(db, 'users', currentUser.uid, 'monthly_journals', currentMonthStr);
-    
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+    const journalRef = doc(db, 'users', currentUser.uid, 'monthly_journals', currentMonthStr);
+    const unsubscribeJournal = onSnapshot(journalRef, (docSnap) => {
         if (docSnap.exists()) {
-            const data = docSnap.data();
-            if (data.blocks) {
-                setBlocks(data.blocks);
-            }
+            setBlocks(docSnap.data().blocks || DEFAULT_BLOCKS);
         } else {
             setBlocks(DEFAULT_BLOCKS);
         }
-        setLoading(false);
-    }, (error) => {
-        console.error("Error fetching monthly journal:", error);
-        setBlocks(DEFAULT_BLOCKS); 
-        setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [currentUser, currentMonthStr]);
+    const fetchLogs = async () => {
+        try {
+            const start = format(startOfMonth(selectedDate), 'yyyy-MM-dd');
+            const end = format(endOfMonth(selectedDate), 'yyyy-MM-dd');
+            const logsQ = query(
+                collection(db, 'users', currentUser.uid, 'logs'),
+                where('date', '>=', start),
+                where('date', '<=', end)
+            );
+            const snap = await getDocs(logsQ);
+            const fetchedLogs = snap.docs.map(d => ({ date: d.id, ...d.data() }));
+            setLogs(fetchedLogs.sort((a,b) => a.date.localeCompare(b.date)));
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    fetchLogs();
+
+    return () => unsubscribeJournal();
+  }, [currentUser, currentMonthStr, selectedDate]);
+
+  // --- Analytics Logic ---
+  const analytics = useMemo(() => {
+      const totalDays = logs.length;
+      const daysInMonth = getDaysInMonth(selectedDate);
+      const completionPercentage = Math.round((totalDays / daysInMonth) * 100);
+
+      // Streak logic (simplified for month view)
+      let currentStreak = 0;
+      let maxStreak = 0;
+      let tempStreak = 0;
+      // Note: This streak logic only counts streaks *within* the fetched month logs
+      // A more robust streak needs previous month data, but for this view "Month Streak" is acceptable.
+      for (let i = 0; i < daysInMonth; i++) {
+          const d = format(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), i + 1), 'yyyy-MM-dd');
+          const hasLog = logs.find(l => l.date === d);
+          if (hasLog) {
+              tempStreak++;
+          } else {
+              maxStreak = Math.max(maxStreak, tempStreak);
+              tempStreak = 0;
+          }
+      }
+      maxStreak = Math.max(maxStreak, tempStreak);
+      
+      const moodSum = logs.reduce((acc, log) => acc + (log.mood !== undefined ? Number(log.mood) : 3), 0);
+      const moodAvg = totalDays ? (moodSum / totalDays).toFixed(1) : 0;
+      // Mood Distribution
+      const moodCounts = logs.reduce((acc, log) => {
+          const m = log.mood || 3;
+          acc[m] = (acc[m] || 0) + 1;
+          return acc;
+      }, {});
+      const mostFrequentMood = Object.keys(moodCounts).reduce((a, b) => moodCounts[a] > moodCounts[b] ? a : b, 3);
+
+      const ratingSum = logs.reduce((acc, log) => acc + Number(log.rating || 0), 0);
+      const ratingAvg = totalDays ? (ratingSum / totalDays).toFixed(1) : 0;
+      const ratings = logs.map(l => Number(l.rating || 0));
+      const bestRating = ratings.length ? Math.max(...ratings) : '-';
+      const worstRating = ratings.length ? Math.min(...ratings) : '-';
+
+      const sleepSum = logs.reduce((acc, log) => acc + Number(log.sleep || 0), 0);
+      const sleepAvg = totalDays ? (sleepSum / totalDays).toFixed(1) : 0;
+
+      const totalSpend = logs.reduce((acc, log) => {
+         let val = 0;
+         const s = String(log.spend || '').toLowerCase().replace(/,/g, '');
+         if (s.includes('k')) val = parseFloat(s) * 1000;
+         else if (s.includes('>')) val = 5500; 
+         else val = parseFloat(s);
+         return acc + (isNaN(val) ? 0 : val);
+      }, 0);
+      const highSpendDays = logs.filter(l => {
+          const s = String(l.spend || '');
+           return s === '>5000' || s === '>5k' || parseFloat(s) > 5000;
+      }).length; 
+      
+      // Steps
+      const stepsSum = logs.reduce((acc, log) => {
+          let val = 0;
+          const s = String(log.steps || '').toLowerCase().replace(/,/g, '');
+          if (s.includes('k')) val = parseFloat(s) * 1000;
+          else if (s.includes('<')) val = 500; // <1000 -> 500 avg
+          else if (s.includes('-')) {
+             const parts = s.split('-');
+             if (parts.length === 2) val = (parseFloat(parts[0]) + parseFloat(parts[1])) / 2; // Midpoint
+          }
+          else val = parseFloat(s);
+          return acc + (isNaN(val) ? 0 : val);
+      }, 0);
+      const stepsAvg = totalDays ? Math.round(stepsSum / totalDays) : 0;
+      const maxSteps = logs.length ? Math.max(...logs.map(l => Number(l.steps || 0))) : 0;
+
+      // Weekly Analysis
+      const weeklyData = {};
+      logs.forEach(log => {
+          const w = getWeek(new Date(log.date)); // Week Number
+          if (!weeklyData[w]) weeklyData[w] = { spend: 0, steps: 0, count: 0, moodSum: 0 };
+          
+          // Spend
+          let spendVal = parseFloat(String(log.spend || 0).replace(/,/g, ''));
+          if (String(log.spend).includes('k')) spendVal = parseFloat(log.spend) * 1000;
+          if (isNaN(spendVal)) spendVal = 0;
+          weeklyData[w].spend += spendVal;
+
+          // Steps
+          let stepsVal = parseFloat(String(log.steps || 0).replace(/,/g, ''));
+          if (String(log.steps).includes('k')) stepsVal = parseFloat(log.steps) * 1000;
+          if (isNaN(stepsVal)) stepsVal = 0;
+          weeklyData[w].steps += stepsVal;
+
+          weeklyData[w].count++;
+          weeklyData[w].moodSum += (log.mood !== undefined ? Number(log.mood) : 3);
+      });
+
+      const weeks = Object.keys(weeklyData);
+      const heaviestSpendWeek = weeks.length ? weeks.reduce((a, b) => weeklyData[a].spend > weeklyData[b].spend ? a : b, weeks[0]) : null;
+      const activeStepWeek = weeks.length ? weeks.reduce((a, b) => weeklyData[a].steps > weeklyData[b].steps ? a : b, weeks[0]) : null;
+      
+      const chartData = logs.map(l => ({
+          day: format(new Date(l.date), 'd'),
+          mood: l.mood !== undefined ? 8 - l.mood : 0, 
+          rating: l.rating || 0
+      }));
+
+      return { 
+          moodAvg, mostFrequentMood, moodCounts,
+          ratingAvg, bestRating, worstRating,
+          sleepAvg, 
+          totalSpend, highSpendDays, 
+          stepsAvg, maxSteps, stepsSum,
+          chartData, totalDays, completionPercentage, maxStreak,
+          weeklyInsights: {
+              heaviestSpendWeek: heaviestSpendWeek ? { week: heaviestSpendWeek, amount: weeklyData[heaviestSpendWeek].spend } : null,
+              activeStepWeek: activeStepWeek ? { week: activeStepWeek, steps: weeklyData[activeStepWeek].steps } : null
+          }
+      };
+  }, [logs, selectedDate]);
+
 
   const saveToDb = useCallback(
     debounce(async (newBlocks) => {
@@ -71,7 +210,8 @@ const Month = () => {
     }, 1000),
     [currentUser, currentMonthStr]
   );
-
+  
+  // ... (Keep existing handlers: handleUpdateBlock, handleDeleteBlock, handleAddBlock, getBlockIcon, getBlockSummary) ...
   const handleUpdateBlock = (updatedBlock) => {
       const newBlocks = blocks.map(b => b.id === updatedBlock.id ? updatedBlock : b);
       setBlocks(newBlocks);
@@ -108,13 +248,11 @@ const Month = () => {
       setEditingBlockId(newBlock.id);
   };
 
-  // --- Render Helpers ---
-
   const getBlockIcon = (type) => {
       switch(type) {
-          case 'checklist': return <FiCheckSquare size={20} className="text-emerald-500" />;
-          case 'retrospective': return <FiRefreshCw size={20} className="text-orange-500" />;
-          default: return <FiType size={20} className="text-indigo-500" />;
+          case 'checklist': return <FiCheckSquare size={20} className="text-emerald-600" />;
+          case 'retrospective': return <FiRefreshCw size={20} className="text-orange-600" />;
+          default: return <FiType size={20} className="text-indigo-600" />;
       }
   };
 
@@ -122,23 +260,14 @@ const Month = () => {
       switch(block.type) {
           case 'text':
               return block.content ? 
-                <span className={`text-sm line-clamp-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{block.content}</span> : 
-                <span className="text-sm italic opacity-40">Empty reflection...</span>;
+                <span className={`text-sm line-clamp-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{block.content}</span> : 
+                <span className="text-sm italic opacity-40">Write something...</span>;
           case 'checklist':
               const total = block.items?.length || 0;
               const completed = block.items?.filter(i => i.completed)?.length || 0;
               return (
-                  <div className="flex flex-col gap-2 w-full">
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
-                          <div 
-                            className="bg-emerald-500 h-full transition-all duration-500" 
-                            style={{ width: total ? `${(completed/total)*100}%` : '0%' }}
-                          />
-                      </div>
-                      <span className="text-xs opacity-60 flex justify-between">
-                          <span>Progress</span>
-                          <span>{completed}/{total}</span>
-                      </span>
+                  <div className="flex items-center gap-2 mt-2">
+                       <span className="text-xs font-bold bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md text-gray-500">{completed}/{total} done</span>
                   </div>
               );
           case 'retrospective':
@@ -146,173 +275,499 @@ const Month = () => {
              const st = (block.content?.stop?.length || 0);
              const k = (block.content?.keep?.length || 0);
              return (
-                 <div className="text-xs opacity-70 flex gap-3 mt-1">
-                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span>{s} Start</span>
-                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span>{st} Stop</span>
-                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span>{k} Keep</span>
+                 <div className="flex gap-2 mt-2">
+                     <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                     <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                     <span className="w-2 h-2 rounded-full bg-blue-400"></span>
                  </div>
              );
           default: return null;
       }
   };
 
+
   // --- Views ---
 
   const EditorView = () => {
-      const block = blocks.find(b => b.id === editingBlockId);
-      if (!block) return null;
+    // ... (Keep existing Editor View) ...
+    const block = blocks.find(b => b.id === editingBlockId);
+    if (!block) return null;
+
+    return (
+      <motion.div 
+          initial={{ opacity: 0, y: '100%' }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: '100%' }}
+          className={`fixed inset-0 z-50 flex flex-col bg-[#FDFBF7] dark:bg-[#111]`}
+      >
+          <div className={`px-6 py-4 flex items-center justify-between border-b ${isDarkMode ? 'border-gray-800' : 'border-[#EAE0D5]'} shrink-0`}>
+              <button 
+                  onClick={() => setEditingBlockId(null)}
+                  className={`p-2 rounded-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}
+              >
+                  <FiArrowLeft size={20} />
+              </button>
+              <span className="font-bold text-lg">{block.title}</span>
+              <div className="flex items-center gap-3">
+                   {lastSaved && <span className="text-xs text-green-500 font-bold">Saved</span>}
+                   <button onClick={() => handleDeleteBlock(block.id)} className="text-red-400"><FiTrash2/></button>
+              </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 md:p-12 max-w-3xl mx-auto w-full">
+              <MonthlyJournalBlock 
+                  block={block} 
+                  onUpdate={handleUpdateBlock} 
+                  onDelete={handleDeleteBlock} 
+                  isDarkMode={isDarkMode}
+              />
+          </div>
+      </motion.div>
+    );
+  };
+
+  const MonthCalendar = () => {
+      const start = startOfMonth(selectedDate);
+      const end = endOfMonth(selectedDate);
+      const days = eachDayOfInterval({ start, end });
+
+      const getDayColor = (date) => {
+          const log = logs.find(l => l.date === format(date, 'yyyy-MM-dd'));
+          if (!log) return isDarkMode ? 'bg-gray-800' : 'bg-gray-200';
+          
+          if (calendarMetric === 'rating') {
+             const score = Number(log.rating || 0);
+             if (score >= 4.5) return 'bg-emerald-400';
+             if (score >= 4) return 'bg-teal-400';
+             if (score >= 3) return 'bg-yellow-400';
+             if (score >= 2) return 'bg-orange-400';
+             return 'bg-red-400';
+          }
+          if (calendarMetric === 'mood') {
+              const m = log.mood !== undefined ? Number(log.mood) : 3;
+              // 1 (Sad) -> 5 (Happy)
+              if (m <= 2) return 'bg-purple-900'; // Very sad/low
+              if (m === 3) return 'bg-purple-400'; // Neutral
+              return 'bg-pink-400'; // Happy
+          }
+           if (calendarMetric === 'sleep') {
+              const s = Number(log.sleep || 0);
+              if (s >= 7) return 'bg-indigo-400'; // Good
+              if (s >= 5) return 'bg-indigo-300'; // Okay
+              return 'bg-indigo-900'; // Bad
+          }
+          if (calendarMetric === 'steps') {
+              const s = Number(log.steps || 0); // Note: steps might be stored as range string '<1000' etc if using wizard dropdown without parsing. But user asked for global spend classification, will assume steps logic is handled or distinct.
+              // Logic for steps (if stored as string range in log from wizard):
+              if (log.steps === '>10k') return 'bg-rose-400';
+              if (log.steps === '5k-10k') return 'bg-rose-300';
+              return 'bg-rose-100';
+          }
+          if (calendarMetric === 'spend') {
+               const val = Number(log.spend || 0);
+               if (val === 0) return 'bg-emerald-100 dark:bg-emerald-900/30'; // No spend = Good
+               if (val <= 500) return 'bg-emerald-300'; // Low spend
+               if (val <= 1000) return 'bg-yellow-300'; // Moderate
+               if (val <= 2500) return 'bg-orange-300'; // High
+               if (val <= 5000) return 'bg-orange-500'; // Very High
+               return 'bg-red-500 text-white'; // Extreme (>5000)
+          }
+          
+          return 'bg-gray-200';
+      };
+
+      const getDayContent = (date) => {
+          const log = logs.find(l => l.date === format(date, 'yyyy-MM-dd'));
+          if (!log) return null;
+          
+          if (calendarMetric === 'rating') return log.rating;
+          if (calendarMetric === 'mood') return log.mood; 
+          if (calendarMetric === 'sleep') return log.sleep;
+          if (calendarMetric === 'steps') return log.steps ? log.steps.replace('k', '') : '';
+          if (calendarMetric === 'spend') {
+              const val = Number(log.spend || 0);
+              if (val === 0) return '-';
+              if (val >= 1000) return (val/1000).toFixed(1) + 'k';
+              return val;
+          }
+          return '';
+      };
 
       return (
-        <motion.div 
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className={`fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-black/20 backdrop-blur-sm`}
-        >
-            <div className={`w-full max-w-4xl max-h-full overflow-hidden flex flex-col rounded-[2.5rem] shadow-2xl ${isDarkMode ? 'bg-[#0a0a0a] border border-gray-800' : 'bg-white'}`}>
-                <div className={`px-8 py-6 flex items-center justify-between border-b ${isDarkMode ? 'border-gray-800' : 'border-gray-100'} shrink-0`}>
-                    <div className="flex items-center gap-4">
-                        <button 
-                            onClick={() => setEditingBlockId(null)}
-                            className={`p-3 rounded-full transition-colors ${isDarkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
-                        >
-                            <FiArrowLeft size={20} />
-                        </button>
-                        <div>
-                            <span className="text-xs font-bold uppercase tracking-wider opacity-50 block mb-1">{block.type}</span>
-                            <h2 className="font-bold text-xl">{block.title}</h2>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                         {lastSaved && <span className="text-xs text-green-500 font-bold flex items-center gap-1"><FiSave /> Saved</span>}
-                         <button 
-                            onClick={() => handleDeleteBlock(block.id)}
-                            className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
-                        >
-                            <FiTrash2 size={20} />
-                        </button>
-                    </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                    <MonthlyJournalBlock 
-                        block={block} 
-                        onUpdate={handleUpdateBlock} 
-                        onDelete={handleDeleteBlock} 
-                        isDarkMode={isDarkMode}
-                    />
-                </div>
-            </div>
-        </motion.div>
+          <div className="flex flex-wrap gap-2 justify-between">
+              {days.map(day => (
+                  <div key={day.toString()} className="flex flex-col items-center gap-1 group relative">
+                      <div className={`w-8 h-8 rounded-full ${getDayColor(day)} transition-all hover:scale-110 cursor-pointer flex items-center justify-center`}>
+                           <span className="text-[10px] font-black text-black/60">{getDayContent(day)}</span>
+                      </div>
+                      <span className="text-[10px] font-bold opacity-30">{format(day, 'd')}</span>
+                      
+                      {/* Simple Tooltip */}
+                      <div className="absolute bottom-full mb-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap z-20">
+                          {format(day, 'MMM d')}
+                      </div>
+                  </div>
+              ))}
+          </div>
       );
   };
+  
+    const YearView = () => {
+        const yearStart = startOfYear(selectedDate);
+        const yearEnd = endOfYear(selectedDate);
+        const months = eachMonthOfInterval({ start: yearStart, end: yearEnd });
+
+        return (
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 bg-white/90 dark:bg-black/90 backdrop-blur-xl"
+            >
+                <div className="w-full max-w-sm">
+                    <div className="flex justify-between items-center mb-8">
+                         <h2 className="text-2xl font-bold font-serif">{format(selectedDate, 'yyyy')}</h2>
+                         <button onClick={() => setShowYearView(false)} className="p-2 rounded-full hover:bg-black/5"><FiX size={24}/></button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                        {months.map(month => {
+                            const isSelected = isSameMonth(month, selectedDate);
+                            const isFuture = month > new Date();
+                            return (
+                                <button
+                                    key={month.toString()}
+                                    disabled={isFuture}
+                                    onClick={() => {
+                                        setSelectedDate(month);
+                                        setShowYearView(false);
+                                    }}
+                                    className={`
+                                        aspect-square rounded-2xl flex flex-col items-center justify-center text-sm font-bold transition-all
+                                        ${isSelected ? 'bg-black text-white dark:bg-white dark:text-black scale-105 shadow-xl' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}
+                                        ${isFuture ? 'opacity-30 cursor-not-allowed' : ''}
+                                    `}
+                                >
+                                    <span>{format(month, 'MMM')}</span>
+                                </button>
+                            )
+                        })}
+                    </div>
+                </div>
+            </motion.div>
+        );
+    };
+
+  const StatCard = ({ title, value, sub, icon, bgClass, textClass, onClick }) => (
+      <div onClick={onClick} className={`p-6 rounded-[2rem] flex flex-col justify-between min-h-[160px] relative overflow-hidden group cursor-pointer transition-all ${isDarkMode ? 'bg-[#1C1C1E] hover:bg-gray-800' : 'bg-white hover:bg-gray-50'} shadow-sm`}>
+          <div className="flex justify-between items-start z-10">
+              <div className={`p-3 rounded-2xl ${bgClass} bg-opacity-20 ${textClass}`}>
+                  {icon}
+              </div>
+              <FiArrowLeft className={`rotate-180 opacity-0 group-hover:opacity-100 transition-opacity ${textClass}`} />
+          </div>
+          <div className="z-10 mt-4">
+              <h3 className="text-3xl font-black tracking-tight">{value}</h3>
+              <p className="text-xs font-bold uppercase tracking-wider opacity-60 mt-1">{title}</p>
+              {sub && <p className="text-[10px] mt-2 opacity-40 font-medium">{sub}</p>}
+          </div>
+          {/* Decorative Blob */}
+          <div className={`absolute -bottom-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity ${textClass.replace('text', 'bg')}`} />
+      </div>
+  );
 
   const GridView = () => (
       <motion.div 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
         exit={{ opacity: 0 }}
-        className="relative z-10 max-w-7xl mx-auto pb-20"
+        className="relative z-10 max-w-2xl mx-auto pb-32 pt-6"
       >
-        <div className="flex flex-col md:flex-row items-start justify-between mb-12 gap-6">
-            <div>
-                <h1 className={`text-6xl font-black tracking-tighter mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Monthly Review.</h1>
-                <p className={`font-medium text-xl flex items-center gap-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                    <span className="capitalize">{displayMonth}</span>
-                </p>
+        {/* 1. Header & Summary */}
+        <div className="mb-10">
+             <div className="flex items-center justify-between mb-6">
+                 <button onClick={() => setSelectedDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))} className="p-3 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"><FiArrowLeft/></button>
+                 
+                 <div className="flex flex-col items-center">
+                     <div className="flex items-center gap-2 cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 px-4 py-2 rounded-2xl transition-all" onClick={() => setShowYearView(true)}>
+                        <h2 className={`text-xl font-bold font-serif ${isDarkMode ? 'text-gray-100' : 'text-[#2D2D2D]'}`}>{displayMonth}</h2>
+                        <FiGrid size={16} className="opacity-40" />
+                     </div>
+                     <p className="text-xs font-bold uppercase tracking-widest text-[#B0B0B0] mt-1">Monthly Review</p>
+                 </div>
+
+                 <button onClick={() => setSelectedDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))} disabled={endOfMonth(selectedDate) >= new Date()} className="p-3 hover:bg-black/5 dark:hover:bg-white/10 rounded-full disabled:opacity-30 transition-colors"><FiArrowLeft className="rotate-180"/></button>
+             </div>
+
+             <div className="flex justify-between items-center px-4 md:px-12">
+                 <div className="text-center">
+                     <span className="block text-2xl font-black">{analytics?.totalDays}</span>
+                     <span className="text-[10px] font-bold uppercase tracking-wider opacity-40">Days Logged</span>
+                 </div>
+                 <div className="text-center">
+                     <span className="block text-2xl font-black">{analytics?.completionPercentage}%</span>
+                     <span className="text-[10px] font-bold uppercase tracking-wider opacity-40">Complete</span>
+                 </div>
+                 <div className="text-center">
+                     <span className="block text-2xl font-black">{analytics?.maxStreak}</span>
+                     <span className="text-[10px] font-bold uppercase tracking-wider opacity-40">Best Streak</span>
+                 </div>
+             </div>
+        </div>
+
+        {/* 2. Visual Calendar */}
+        <div className={`mb-10 p-6 rounded-[2.5rem] ${isDarkMode ? 'bg-[#1C1C1E]' : 'bg-white'} shadow-sm`}>
+            <div className="flex justify-between items-center mb-6 relative z-30">
+                <div className="relative">
+                    <button 
+                        onClick={() => setIsMetricMenuOpen(!isMetricMenuOpen)}
+                        className="flex items-center gap-2 font-bold text-sm uppercase tracking-wider opacity-60 hover:opacity-100 transition-opacity"
+                    >
+                        {calendarMetric.charAt(0).toUpperCase() + calendarMetric.slice(1)} Calendar
+                        <FiChevronDown className={`transition-transform ${isMetricMenuOpen ? 'rotate-180' : ''}`}/>
+                    </button>
+                    
+                    <AnimatePresence>
+                        {isMetricMenuOpen && (
+                            <motion.div 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 10 }}
+                                className="absolute top-full left-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden z-50 border border-gray-100 dark:border-gray-700"
+                            >
+                                {['rating', 'mood', 'sleep', 'steps', 'spend'].map(m => (
+                                    <button 
+                                        key={m}
+                                        onClick={() => {
+                                            setCalendarMetric(m);
+                                            setIsMetricMenuOpen(false);
+                                        }}
+                                        className={`w-full text-left px-4 py-3 text-xs font-bold uppercase transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${calendarMetric === m ? 'text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : ''}`}
+                                    >
+                                        {m}
+                                    </button>
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </div>
+            <MonthCalendar />
+            
+            {/* Dynamic Legend (Moved Below) */}
+            <div className="flex flex-wrap justify-center gap-3 mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+                {(() => {
+                    let items = [];
+                    if (calendarMetric === 'spend') {
+                        items = [
+                            { color: 'bg-emerald-100 dark:bg-emerald-900', label: '0' },
+                            { color: 'bg-emerald-300', label: '<500' },
+                            { color: 'bg-yellow-300', label: '<1k' },
+                            { color: 'bg-orange-300', label: '<2.5k' },
+                            { color: 'bg-orange-500', label: '<5k' },
+                            { color: 'bg-red-500', label: '>5k' },
+                        ];
+                    } else if (calendarMetric === 'rating') {
+                        items = [
+                            { color: 'bg-red-400', label: '1' },
+                            { color: 'bg-orange-400', label: '2' },
+                            { color: 'bg-yellow-400', label: '3' },
+                            { color: 'bg-teal-400', label: '4' },
+                            { color: 'bg-emerald-400', label: '5' },
+                        ];
+                    } else if (calendarMetric === 'mood') {
+                        items = [
+                            { color: 'bg-purple-900', label: 'Low' },
+                            { color: 'bg-purple-400', label: 'Neu' },
+                            { color: 'bg-pink-400', label: 'High' },
+                        ];
+                    } else if (calendarMetric === 'sleep') {
+                        items = [
+                            { color: 'bg-indigo-900', label: '<5h' },
+                            { color: 'bg-indigo-300', label: '5-7h' },
+                            { color: 'bg-indigo-400', label: '8h+' },
+                        ];
+                    } else if (calendarMetric === 'steps') {
+                        items = [
+                            { color: 'bg-rose-100', label: '<4k' },
+                            { color: 'bg-rose-300', label: '4-8k' },
+                            { color: 'bg-rose-400', label: '8k+' },
+                        ];
+                    }
+
+                    return items.map((item, i) => (
+                        <div key={i} className="flex items-center gap-1.5">
+                            <div className={`w-2.5 h-2.5 rounded-full ${item.color}`}></div>
+                            <span className="text-[10px] font-bold opacity-50 uppercase tracking-wide">{item.label}</span>
+                        </div>
+                    ));
+                })()}
             </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 md:gap-6 auto-rows-[minmax(200px,auto)]">
-            { blocks.map((block, index) => {
-                
-                // Colorful Palette Logic (Cycling)
-                const colors = [
-                    { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-900 dark:text-orange-100' },
-                    { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-900 dark:text-blue-100' },
-                    { bg: 'bg-pink-100 dark:bg-pink-900/30', text: 'text-pink-900 dark:text-pink-100' },
-                    { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-900 dark:text-teal-100' },
-                    { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-900 dark:text-purple-100' }, 
-                    { bg: 'bg-lime-100 dark:bg-lime-900/30', text: 'text-lime-900 dark:text-lime-100' },
-                ];
-                
-                // Assign color based on index or type? Let's do index for maximum "colorful" grid effect
-                const colorTheme = colors[index % colors.length];
-
-                return (
-                <motion.div 
-                    layoutId={`block-${block.id}`}
-                    key={block.id}
-                    onClick={() => setEditingBlockId(block.id)}
-                    whileHover={{ scale: 1.02, rotate: 1 }}
-                    whileTap={{ scale: 0.95 }}
-                    className={`relative p-6 rounded-[2.5rem] cursor-pointer overflow-hidden transition-all duration-300 group flex flex-col justify-between ${colorTheme.bg}`}
-                >
-                     <div>
-                        <div className="flex justify-between items-start mb-4">
-                             <div className="p-3 bg-white/60 dark:bg-black/20 backdrop-blur-sm rounded-2xl shadow-sm">
-                                 {getBlockIcon(block.type)}
-                             </div>
-                             <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <span className="p-2 bg-white/40 dark:bg-black/20 rounded-full flex items-center justify-center">
-                                    <FiEdit2 size={14} className={colorTheme.text} />
-                                 </span>
-                             </div>
+        {/* Metric Highlight Card */}
+        <div className="mb-10 px-2">
+             {calendarMetric === 'spend' && (
+                 <div className="flex gap-4">
+                     <div className="flex-1 p-6 rounded-[2rem] bg-emerald-50 dark:bg-emerald-900/10 flex flex-col justify-between">
+                         <div>
+                             <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 opacity-60">Total Month Spend</p>
+                             <h3 className="text-2xl font-black text-emerald-800 dark:text-emerald-300 mt-2">
+                                 {analytics?.totalSpend > 0 ? `₹${(analytics.totalSpend/1000).toFixed(1)}k` : '₹0'}
+                             </h3>
                          </div>
-                         
-                         <h3 className={`font-black text-xl leading-tight mb-2 line-clamp-3 ${colorTheme.text}`}>
-                            {block.title}
-                         </h3>
                      </div>
-                     
-                     <div className={`mt-4 pt-4 border-t border-black/5 dark:border-white/10 ${colorTheme.text}`}>
-                        {getBlockSummary(block)}
+                     <div className="flex-1 p-6 rounded-[2rem] bg-orange-50 dark:bg-orange-900/10 flex flex-col justify-between">
+                         <div>
+                             <p className="text-xs font-bold uppercase tracking-widest text-orange-600 dark:text-orange-400 opacity-60">Highest Week</p>
+                             <h3 className="text-xl font-black text-orange-800 dark:text-orange-300 mt-2">
+                                 Week {analytics?.weeklyInsights?.heaviestSpendWeek?.week || '-'}
+                             </h3>
+                             <p className="text-xs font-bold opacity-40 mt-1">
+                                 {analytics?.weeklyInsights?.heaviestSpendWeek ? `₹${(analytics.weeklyInsights.heaviestSpendWeek.amount/1000).toFixed(1)}k` : '-'}
+                             </p>
+                         </div>
                      </div>
-                </motion.div>
-                );
-            })}
+                 </div>
+             )}
 
-            {/* Add New Integration */}
-            <div className="p-6 rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center gap-6 min-h-[240px] transition-all group border-gray-300 dark:border-gray-800 hover:border-indigo-400 dark:hover:border-indigo-600 bg-gray-50/50 dark:bg-gray-900/20">
-                 <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-500 mb-2 group-hover:scale-110 transition-transform">
-                     <FiPlus size={32} />
-                 </div>
-                 <div className="flex flex-col gap-2 w-full">
-                     <button onClick={() => handleAddBlock('text')} className="py-2 px-4 rounded-xl bg-white dark:bg-gray-800 shadow-sm hover:shadow-md text-sm font-bold transition-all text-center">
-                        Reflection
-                     </button>
-                     <div className="flex gap-2">
-                         <button onClick={() => handleAddBlock('checklist')} className="flex-1 py-2 px-4 rounded-xl bg-white dark:bg-gray-800 shadow-sm hover:shadow-md text-sm font-bold transition-all text-center">
-                            List
-                         </button>
-                         <button onClick={() => handleAddBlock('retrospective')} className="flex-1 py-2 px-4 rounded-xl bg-white dark:bg-gray-800 shadow-sm hover:shadow-md text-sm font-bold transition-all text-center">
-                            Retro
-                         </button>
+             {calendarMetric === 'steps' && (
+                  <div className="flex gap-4">
+                     <div className="flex-1 p-6 rounded-[2rem] bg-rose-50 dark:bg-rose-900/10 flex flex-col justify-between">
+                         <div>
+                             <p className="text-xs font-bold uppercase tracking-widest text-rose-600 dark:text-rose-400 opacity-60">Total Steps</p>
+                             <h3 className="text-2xl font-black text-rose-800 dark:text-rose-300 mt-2">
+                                 {analytics?.stepsSum > 0 ? `${(analytics.stepsSum/1000).toFixed(0)}k` : '0'}
+                             </h3>
+                         </div>
+                     </div>
+                     <div className="flex-1 p-6 rounded-[2rem] bg-blue-50 dark:bg-blue-900/10 flex flex-col justify-between">
+                         <div>
+                             <p className="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 opacity-60">Most Active Week</p>
+                              <h3 className="text-xl font-black text-blue-800 dark:text-blue-300 mt-2">
+                                 Week {analytics?.weeklyInsights?.activeStepWeek?.week || '-'}
+                             </h3>
+                             <p className="text-xs font-bold opacity-40 mt-1">
+                                 {analytics?.weeklyInsights?.activeStepWeek ? `${(analytics.weeklyInsights.activeStepWeek.steps/1000).toFixed(1)}k steps` : '-'}
+                             </p>
+                         </div>
                      </div>
                  </div>
+             )}
+             
+             {(calendarMetric === 'mood' || calendarMetric === 'rating' || calendarMetric === 'sleep') && (
+                  <div className="p-6 rounded-[2rem] bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between">
+                      <div>
+                          <p className="text-xs font-bold uppercase tracking-widest opacity-40">Monthly Average</p>
+                          <h3 className="text-2xl font-black mt-1">
+                              {calendarMetric === 'mood' && analytics?.moodAvg}
+                              {calendarMetric === 'rating' && analytics?.ratingAvg}
+                              {calendarMetric === 'sleep' && analytics?.sleepAvg + 'h'}
+                          </h3>
+                      </div>
+                      <div className="text-right">
+                          <p className="text-xs font-bold uppercase tracking-widest opacity-40">Best Day</p>
+                           <h3 className="text-xl font-black mt-1">
+                              {calendarMetric === 'mood' && (analytics?.mostFrequentMood > 3 ? 'Happy' : 'Normal')}
+                              {calendarMetric === 'rating' && analytics?.bestRating}
+                              {calendarMetric === 'sleep' && '>8h'}
+                          </h3>
+                      </div>
+                  </div>
+             )}
+        </div>
+
+        {/* 3. Stat Cards Grid */}
+        <div className="grid grid-cols-2 gap-4 mb-10">
+            <StatCard 
+                title="Avg Rating" 
+                value={analytics?.ratingAvg} 
+                sub={`Best: ${analytics?.bestRating} / Worst: ${analytics?.worstRating}`}
+                icon={<FiStar size={20}/>}
+                bgClass="bg-orange-100 dark:bg-orange-900/40"
+                textClass="text-orange-600 dark:text-orange-400"
+            />
+            <StatCard 
+                title="Mood Flow" 
+                value={analytics?.mostFrequentMood === '3' ? 'Neutral' : (analytics?.mostFrequentMood > 3 ? 'Happy' : 'Low')} 
+                sub="Most frequent mood"
+                icon={<FiSmile size={20}/>}
+                bgClass="bg-yellow-100 dark:bg-yellow-900/40"
+                textClass="text-yellow-600 dark:text-yellow-400"
+            />
+            <StatCard 
+                title="Avg Sleep" 
+                value={`${analytics?.sleepAvg}h`} 
+                sub="Daily Average"
+                icon={<FiMoon size={20}/>}
+                bgClass="bg-indigo-100 dark:bg-indigo-900/40"
+                textClass="text-indigo-600 dark:text-indigo-400"
+            />
+            <StatCard 
+                title="Money" 
+                value={analytics?.highSpendDays} 
+                sub="High spend days (>5k)"
+                icon={<FiDollarSign size={20}/>}
+                bgClass="bg-emerald-100 dark:bg-emerald-900/40"
+                textClass="text-emerald-600 dark:text-emerald-400"
+            />
+             <StatCard 
+                title="Activity" 
+                value={analytics?.stepsAvg > 0 ? `${(analytics?.stepsAvg/1000).toFixed(1)}k` : '-'} 
+                sub="Avg Daily Steps"
+                icon={<FiActivity size={20}/>}
+                bgClass="bg-rose-100 dark:bg-rose-900/40"
+                textClass="text-rose-600 dark:text-rose-400"
+            />
+             <StatCard 
+                title="Habits" 
+                value={`${analytics?.completionPercentage}%`} 
+                sub="Log Consistency"
+                icon={<FiCheckSquare size={20}/>}
+                bgClass="bg-blue-100 dark:bg-blue-900/40"
+                textClass="text-blue-600 dark:text-blue-400"
+            />
+        </div>
+
+        {/* 4. Reflections (Read-onlyish view) */}
+        <div>
+            <div className="flex justify-between items-center mb-6 px-2">
+                <h3 className="font-serif font-bold text-lg">Monthly Reflections</h3>
+                <button onClick={() => handleAddBlock('text')} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 transition-colors"><FiPlus/></button>
+            </div>
+            <div className="flex flex-col gap-4">
+                {blocks.map((block, i) => (
+                    <div 
+                        key={block.id} 
+                        onClick={() => setEditingBlockId(block.id)}
+                        className={`p-6 rounded-[2rem] border cursor-pointer hover:border-indigo-300 transition-all ${isDarkMode ? 'bg-[#1C1C1E] border-gray-800' : 'bg-white border-gray-100'}`}
+                    >
+                        <div className="flex items-center gap-3 mb-3">
+                             {getBlockIcon(block.type)}
+                             <h4 className="font-bold">{block.title}</h4>
+                        </div>
+                        <div className="pl-8 text-sm opacity-60">
+                             {getBlockSummary(block)}
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
+
       </motion.div>
   );
 
   return (
-    <div className={`min-h-screen font-sans p-6 md:p-12 relative overflow-y-auto transition-colors duration-300 ${isDarkMode ? 'bg-[#050505] text-white' : 'bg-[#FAFAFA] text-gray-900'}`}>
-       
-        <div className={`fixed top-0 right-0 w-[800px] h-[800px] rounded-full blur-[120px] opacity-40 pointer-events-none ${isDarkMode ? 'bg-indigo-900/20' : 'bg-indigo-100'}`} />
-        <div className={`fixed bottom-0 left-0 w-[600px] h-[600px] rounded-full blur-[100px] opacity-40 pointer-events-none ${isDarkMode ? 'bg-rose-900/20' : 'bg-rose-100'}`} />
-        
-        {loading ? (
-            <div className="flex justify-center items-center h-[80vh] relative z-20">
-                <div className="animate-pulse flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-800 rounded-full"></div>
-                    <div className="h-4 w-32 bg-gray-200 dark:bg-gray-800 rounded-full"></div>
-                </div>
-            </div>
-        ) : (
-            <AnimatePresence mode="wait">
+    <div className={`min-h-screen font-sans p-6 ${isDarkMode ? 'bg-[#000]' : 'bg-[#FDFBF7] text-[#2D2D2D]'} transition-colors duration-300`}>
+         {loading ? (
+             <div className="h-screen flex items-center justify-center">
+                 <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
+             </div>
+         ) : (
+             <AnimatePresence mode="wait">
+                {showYearView && <YearView key="year" />}
                 {editingBlockId ? <EditorView key="editor" /> : <GridView key="grid" />}
             </AnimatePresence>
-        )}
+         )}
     </div>
   );
 };

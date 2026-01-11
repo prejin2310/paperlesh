@@ -154,8 +154,8 @@ const Track = () => {
                 const startRange = format(displayDates[0], 'yyyy-MM-dd');
                 const endRange = format(displayDates[displayDates.length - 1], 'yyyy-MM-dd');
 
-                // Extend fetch range to catch streaks (e.g. current month)
-                const streakStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+                // Extend fetch range to catch streaks (e.g. last 365 days)
+                const streakStart = format(subDays(new Date(), 365), 'yyyy-MM-dd');
                 
                 const logsRef = collection(db, 'users', currentUser.uid, 'logs');
                 // We'll query from streakStart to now to get decent streak data

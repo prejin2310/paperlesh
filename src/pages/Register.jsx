@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiUser, FiMail, FiLock, FiChevronLeft, FiEye, FiEyeOff, FiAlertCircle, FiChevronDown } from 'react-icons/fi';
+import { FiUser, FiMail, FiLock, FiChevronLeft, FiEye, FiEyeOff, FiAlertCircle, FiChevronDown, FiCheck } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Register = () => {
     const navigate = useNavigate();
@@ -21,6 +21,7 @@ const Register = () => {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [showGenderDropdown, setShowGenderDropdown] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -81,7 +82,7 @@ const Register = () => {
                 >
                     <FiChevronLeft size={24} />
                 </Link>
-                <div className="font-bold text-xl tracking-tight">MyJournle</div>
+                <img src="/lan.png" alt="MyJournle" className="h-8 object-contain" />
                 <div className="w-10"></div>
             </div>
 
@@ -151,27 +152,54 @@ const Register = () => {
                             </div>
                             
                             {/* Gender Select - Custom Styled */}
-                            <div className="relative group">
+                            <div className="relative group z-20">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-black transition-colors z-10">
                                    {/* You can add a gender icon here if you want */}
                                     <span className="text-xl font-bold">⚥</span>
                                 </div>
-                               <select
-                                    name="gender"
-                                    required
-                                    value={formData.gender}
-                                    onChange={handleChange}
-                                    className="block w-full pl-12 pr-10 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-2xl text-base font-bold text-gray-900 placeholder-gray-400 transition-all outline-none appearance-none cursor-pointer"
+                                <button
+                                    type="button"
+                                    onClick={() => setShowGenderDropdown(!showGenderDropdown)}
+                                    className={`block w-full pl-12 pr-10 py-4 bg-gray-50 border-2 ${showGenderDropdown ? 'bg-white border-black' : 'border-transparent'} hover:bg-white hover:border-gray-200 focus:bg-white focus:border-black rounded-2xl text-base font-bold text-left transition-all outline-none ${!formData.gender ? 'text-gray-400' : 'text-gray-900'}`}
                                 >
-                                    <option value="" disabled>Select Gender</option>
-                                    <option value="male">Male</option>
-                                    <option value="female">Female</option>
-                                    <option value="other">Other</option>
-                                    <option value="prefer_not_to_say">Prefer not to say</option>
-                                </select>
+                                    {formData.gender ? formData.gender.charAt(0).toUpperCase() + formData.gender.slice(1).replace(/_/g, ' ') : 'Select Gender'}
+                                </button>
                                 <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
-                                    <FiChevronDown size={20} />
+                                    <FiChevronDown size={20} className={`transition-transform duration-200 ${showGenderDropdown ? 'rotate-180' : ''}`} />
                                 </div>
+
+                                {/* Custom Dropdown Menu */}
+                                <AnimatePresence>
+                                    {showGenderDropdown && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 10 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 py-2"
+                                        >
+                                            {[
+                                                { label: 'Male', value: 'male' },
+                                                { label: 'Female', value: 'female' },
+                                                { label: 'Other', value: 'other' },
+                                                { label: 'Prefer not to say', value: 'prefer_not_to_say' }
+                                            ].map((option) => (
+                                                <button
+                                                    key={option.value}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setFormData(prev => ({ ...prev, gender: option.value }));
+                                                        setShowGenderDropdown(false);
+                                                    }}
+                                                    className="w-full text-left px-6 py-3 font-bold text-gray-600 hover:bg-gray-50 hover:text-black transition-colors flex justify-between items-center"
+                                                >
+                                                    {option.label}
+                                                    {formData.gender === option.value && <FiCheck className="text-black" />}
+                                                </button>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
 
 

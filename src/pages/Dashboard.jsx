@@ -23,7 +23,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInstallPrompt } from '../context/InstallContext';
 import { 
-  FiEdit2, 
+  FiEdit2,
+  FiTrash2, 
   FiPlus, 
   FiZap,
   FiSun,
@@ -35,13 +36,16 @@ import {
   FiCalendar,
   FiHelpCircle
 } from 'react-icons/fi';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import ConfirmationModal from '../components/common/ConfirmationModal';
 import DailyLogWizard from '../components/dashboard/DailyLogWizard';
 import CalendarModal from '../components/dashboard/CalendarModal';
 import QuickAccessManager from '../components/dashboard/QuickAccessManager';
 import QuickToolModal from '../components/dashboard/QuickToolModal';
 import AppGuide from '../components/dashboard/AppGuide';
+import NotificationPanel from '../components/dashboard/NotificationPanel';
+import { useNotifications } from '../hooks/useNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -58,6 +62,10 @@ const Dashboard = () => {
 
   const { currentUser } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
+
+  // Notifications
+  const { unreadCount, notifications, markAsRead, markAllRead, deleteNotification, clearAllNotifications, permissionStatus, requestPermission } = useNotifications(currentUser);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   // Install Prompt Logic
   const navigate = useNavigate();
@@ -86,6 +94,14 @@ const Dashboard = () => {
   const [isQuickManagerOpen, setIsQuickManagerOpen] = useState(false);
   const [isAppGuideOpen, setIsAppGuideOpen] = useState(false);
   const [activeQuickTool, setActiveQuickTool] = useState(null);
+
+  const [confirmModal, setConfirmModal] = useState({ 
+    isOpen: false, 
+    title: '', 
+    message: '', 
+    onConfirm: () => {},
+    type: 'danger'
+  });
 
   useEffect(() => {
     const savedLinks = localStorage.getItem('userQuickLinks');
@@ -188,7 +204,7 @@ const Dashboard = () => {
       
       setLoading(true);
       try {
-        const startStr = format(startOfYear(new Date()), 'yyyy-MM-dd');
+        const startStr = format(subDays(new Date(), 365), 'yyyy-MM-dd'); // Fetch last 365 days for streaks
         const endStr = format(endOfYear(new Date()), 'yyyy-MM-dd');
 
         const logsRef = collection(db, 'users', currentUser.uid, 'logs');
@@ -272,6 +288,31 @@ const Dashboard = () => {
         if (differenceInDays(today, current) > 365) break;
     }
     return streak;
+  };
+
+  const performDeleteLog = async (dateStr) => {
+    try {
+        await deleteDoc(doc(db, 'users', currentUser.uid, 'logs', dateStr));
+        setLogs(prev => {
+            const newLogs = {...prev};
+            delete newLogs[dateStr];
+            return newLogs;
+        });
+        toast.success("Log deleted.");
+    } catch(err) {
+        console.error(err);
+        toast.error("Failed to delete.");
+    }
+  };
+
+  const handleDeleteLog = (dateStr) => {
+    setConfirmModal({
+        isOpen: true,
+        title: 'Delete Log?',
+        message: 'Are you sure you want to delete this daily log? This action cannot be undone.',
+        onConfirm: () => performDeleteLog(dateStr),
+        type: 'danger'
+    });
   };
 
   const renderDateStrip = () => {
@@ -392,11 +433,14 @@ const Dashboard = () => {
                    <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 opacity-50"></div>
 
                    <button 
-                        onClick={() => toast('No new notifications', { icon: '🔔' })}
-                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        onClick={() => setIsNotificationsOpen(true)}
+                        className="relative p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                         aria-label="Notifications"
                     >
                         <FiBell size={18} />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-gray-800"></span>
+                        )}
                     </button>
                     
                    <button 
@@ -892,6 +936,12 @@ const Dashboard = () => {
                                                 >
                                                     <FiEdit2 size={14} />
                                                 </button>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteLog(card.data.date); }}
+                                                    className="w-8 h-8 rounded-full flex items-center justify-center bg-red-50 dark:bg-red-900/10 hover:bg-red-500 hover:text-white dark:hover:bg-red-600 text-red-500 dark:text-red-400 transition-all"
+                                                >
+                                                    <FiTrash2 size={14} />
+                                                </button>
                                             </div>
                                         </div>
 
@@ -1177,6 +1227,31 @@ const Dashboard = () => {
             />
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {isNotificationsOpen && (
+            <NotificationPanel 
+                isOpen={isNotificationsOpen} 
+                onClose={() => setIsNotificationsOpen(false)} 
+                notifications={notifications}
+                onMarkRead={markAsRead}
+                onDelete={deleteNotification}
+                onClearAll={clearAllNotifications}
+                onMarkAllRead={markAllRead}
+                permissionStatus={permissionStatus}
+                onRequestPermission={requestPermission}
+            />
+        )}
+      </AnimatePresence>
+
+      <ConfirmationModal
+            isOpen={confirmModal.isOpen}
+            onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            title={confirmModal.title}
+            message={confirmModal.message}
+            onConfirm={confirmModal.onConfirm}
+            type={confirmModal.type}
+      />
 
       </div>
       </div>
