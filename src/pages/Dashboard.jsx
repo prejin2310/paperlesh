@@ -40,6 +40,7 @@ import { collection, query, where, getDocs, doc, getDoc, deleteDoc } from 'fireb
 import { db } from '../lib/firebase';
 import ConfirmationModal from '../components/common/ConfirmationModal';
 import DailyLogWizard from '../components/dashboard/DailyLogWizard';
+import LogDetailModal from '../components/dashboard/LogDetailModal';
 import CalendarModal from '../components/dashboard/CalendarModal';
 import QuickAccessManager from '../components/dashboard/QuickAccessManager';
 import QuickToolModal from '../components/dashboard/QuickToolModal';
@@ -162,6 +163,7 @@ const Dashboard = () => {
   // State
   const [logs, setLogs] = useState({}); // Map of dateString -> logData
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLogDetailOpen, setIsLogDetailOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [importantDates, setImportantDates] = useState([]);
@@ -248,7 +250,11 @@ const Dashboard = () => {
 
   const handleOpenLog = (dateStr) => {
       setSelectedDate(dateStr);
-      setIsModalOpen(true);
+      if (logs[dateStr]) {
+          setIsLogDetailOpen(true);
+      } else {
+          setIsModalOpen(true);
+      }
   };
   
   // Handle Deep Link / Action param
@@ -1207,12 +1213,23 @@ const Dashboard = () => {
            onClose={() => setIsAppGuideOpen(false)}
       />
 
-      <CalendarModal
-        isOpen={isCalendarOpen}
-        onClose={() => setIsCalendarOpen(false)}
-        onDateSelect={handleOpenLog}
-        logs={logs}
-      />
+            <CalendarModal
+                isOpen={isCalendarOpen}
+                onClose={() => setIsCalendarOpen(false)}
+                onDateSelect={handleOpenLog}
+                logs={logs}
+            />
+
+            <LogDetailModal
+                isOpen={isLogDetailOpen}
+                onClose={() => setIsLogDetailOpen(false)}
+                date={selectedDate}
+                data={logs[selectedDate]}
+                onEdit={() => {
+                        setIsLogDetailOpen(false);
+                        setIsModalOpen(true);
+                }}
+            />
 
       <AnimatePresence>
         {isModalOpen && (
