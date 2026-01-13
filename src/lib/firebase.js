@@ -23,9 +23,25 @@ export const requestForToken = async () => {
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      const token = await getToken(messaging, {
-        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
-      });
+      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+      console.debug('requestForToken: permission granted; vapidKey present?', !!vapidKey);
+
+      // If service worker is available, wait for it and pass registration to getToken
+      try {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          console.debug('requestForToken: serviceWorker ready', reg.scope);
+          const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: reg });
+          console.debug('requestForToken: getToken result', token);
+          return token;
+        }
+      } catch (swErr) {
+        console.error('requestForToken: serviceWorker error', swErr);
+      }
+
+      // Fallback: try without explicitly passing service worker
+      const token = await getToken(messaging, { vapidKey });
+      console.debug('requestForToken: fallback getToken result', token);
       return token;
     } else {
       console.log('Notification permission denied');

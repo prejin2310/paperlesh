@@ -71,7 +71,8 @@ const NotificationPrompt = () => {
   if (currentUser && permission === 'default') {
     return (
       <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50">
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-6 max-w-lg mx-4">
+        <div className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-6 max-w-lg mx-4">
+          <button aria-label="Close" onClick={() => setVisible(false)} className="absolute top-3 right-3 text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white rounded-full p-1">×</button>
           <h3 className="text-lg font-bold mb-2">Enable notifications to stay up to date</h3>
           <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">We need permission to send reminders and important updates. Please enable notifications to continue using full features.</p>
           <div className="flex gap-3 justify-end">
@@ -84,7 +85,8 @@ const NotificationPrompt = () => {
 
   return (
     <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl p-4 border flex items-start gap-3">
+      <div className="relative bg-white dark:bg-slate-900 rounded-xl shadow-xl p-4 border flex items-start gap-3">
+        <button aria-label="Close" onClick={() => setVisible(false)} className="absolute top-2 right-2 text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white rounded-full p-1">×</button>
         <div className="flex-1">
           <div className="font-bold text-sm mb-1">Don't miss updates</div>
           <div className="text-xs text-slate-600 dark:text-slate-300 mb-3">Enable push notifications to stay informed about reminders and important updates.</div>
