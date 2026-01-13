@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiEdit2, FiStar, FiCalendar, FiActivity, FiMoon, FiDollarSign, FiSmile } from 'react-icons/fi';
+import { FiX, FiEdit2, FiStar, FiCalendar, FiActivity, FiMoon, FiDollarSign, FiSmile, FiDroplet, FiMonitor, FiSun, FiBook, FiFilm, FiLayout, FiCoffee } from 'react-icons/fi';
 import { format } from 'date-fns';
 
 const MOODS = [
@@ -78,6 +78,17 @@ const LogDetailModal = ({ isOpen, onClose, date, data, onEdit }) => {
                         </div>
                     </div>
 
+                    {/* Weather */}
+                    {data.weather && data.weather.length > 0 && (
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                            {data.weather.map(w => (
+                                <div key={w} className="px-3 py-1 bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-300 rounded-full text-xs font-bold flex items-center gap-1">
+                                    <FiSun size={12} /> {w}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     {/* Stats Grid */}
                     <div className="grid grid-cols-3 gap-2">
                         <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-2xl flex flex-col items-center gap-1">
@@ -96,6 +107,65 @@ const LogDetailModal = ({ isOpen, onClose, date, data, onEdit }) => {
                             <span className="font-bold text-sm">{data.spend === '0' ? 'No Spend' : (data.spend || '-')}</span>
                         </div>
                     </div>
+
+                    {/* Secondary Stats */}
+                    <div className="grid grid-cols-2 gap-2">
+                         {data.water && (
+                             <div className="bg-cyan-50 dark:bg-cyan-900/10 p-3 rounded-2xl flex items-center gap-3">
+                                <div className="p-2 bg-white dark:bg-cyan-900/30 rounded-full text-cyan-500">
+                                    <FiDroplet size={14} />
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-bold uppercase text-cyan-400 block">Water</span>
+                                    <span className="font-bold text-sm">{data.water}L</span>
+                                </div>
+                             </div>
+                         )}
+                         {data.screenTime && (
+                             <div className="bg-indigo-50 dark:bg-indigo-900/10 p-3 rounded-2xl flex items-center gap-3">
+                                <div className="p-2 bg-white dark:bg-indigo-900/30 rounded-full text-indigo-500">
+                                    <FiMonitor size={14} />
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-bold uppercase text-indigo-400 block">Screen Time</span>
+                                    <span className="font-bold text-sm">{data.screenTime}h</span>
+                                </div>
+                             </div>
+                         )}
+                    </div>
+                    
+                    {/* Activities */}
+                    {(data.ateOutside || data.watchedMovie || data.readBook) && (
+                        <div>
+                             <h3 className="text-xs font-bold uppercase text-gray-400 mb-3 tracking-widest">Activities</h3>
+                             <div className="space-y-2">
+                                {data.ateOutside && (
+                                    <div className="flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-900/10 rounded-xl">
+                                        <FiCoffee className="text-orange-500" />
+                                        <span className="text-sm font-medium">Ate Outside</span>
+                                    </div>
+                                )}
+                                {data.watchedMovie && (
+                                    <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/10 rounded-xl">
+                                        <FiFilm className="text-red-500" />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium">Watched: {data.movieData?.name || 'Movie'}</span>
+                                            {data.movieData?.platform && <span className="text-xs text-red-400">{data.movieData.platform}</span>}
+                                        </div>
+                                    </div>
+                                )}
+                                {data.readBook && (
+                                    <div className="flex items-center gap-3 p-3 bg-teal-50 dark:bg-teal-900/10 rounded-xl">
+                                        <FiBook className="text-teal-500" />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium">Read: {data.bookData?.name || 'Book'}</span>
+                                            {data.bookData?.author && <span className="text-xs text-teal-400">by {data.bookData.author}</span>}
+                                        </div>
+                                    </div>
+                                )}
+                             </div>
+                        </div>
+                    )}
 
                      {/* Habits */}
                      {data.habits && data.habits.length > 0 && (

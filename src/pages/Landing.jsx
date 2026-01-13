@@ -5,6 +5,7 @@ import {
   FiZap, FiCheck, FiArrowRight, FiSun, FiMoon
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
+import NotificationPrompt from '../components/common/NotificationPrompt';
 
 const Landing = () => {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -390,6 +391,7 @@ const Landing = () => {
              <footer className="py-12 text-center opacity-60 text-sm font-semibold">
                  © 2026 MyJournle. Your life, simplified.
              </footer>
+            <NotificationPrompt />
         </div>
     );
 };

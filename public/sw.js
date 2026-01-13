@@ -7,16 +7,27 @@
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
+// Optional: load runtime SW config from /sw-config.js (served from public/)
+// This file should define a global `FIREBASE_SW_CONFIG` object with your Firebase credentials.
 try {
-  firebase.initializeApp({
-    // REPLACE WITH YOUR FIREBASE CONFIG
+  // Try to import a runtime config file. If it's not present, the import will fail silently.
+  importScripts('/sw-config.js');
+} catch (e) {
+  // ignore - config may be provided inline below or missing
+}
+
+try {
+  const cfg = (typeof FIREBASE_SW_CONFIG !== 'undefined') ? FIREBASE_SW_CONFIG : {
+    // If you don't provide /sw-config.js, replace these values with your Firebase config
     apiKey: "YOUR_API_KEY",
     authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
     projectId: "YOUR_PROJECT_ID",
     storageBucket: "YOUR_PROJECT_ID.appspot.com",
     messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
     appId: "YOUR_APP_ID"
-  });
+  };
+
+  firebase.initializeApp(cfg);
 
   const messaging = firebase.messaging();
 

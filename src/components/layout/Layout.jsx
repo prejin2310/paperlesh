@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from './Navbar'; // Renamed from BottomNav for clarity
+import NotificationPrompt from '../common/NotificationPrompt';
 
 const Layout = () => {
   const { currentUser, isMpinVerified } = useAuth();
@@ -27,6 +28,7 @@ const Layout = () => {
           <Outlet />
         </div>
       </main>
+      <NotificationPrompt />
     </div>
   );
 };
