@@ -64,6 +64,29 @@ exports.checkDailyLog = functions.pubsub.schedule("every day 20:00").timeZone("A
   return null;
 });
 
+// Scheduled Job: Runs every day at 10:00 PM - second reminder for missed logs
+exports.checkDailyLogLate = functions.pubsub.schedule("every day 22:00").timeZone("Asia/Kolkata").onRun(async (context) => {
+  const usersSnap = await db.collection("users").get();
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+
+  const promises = usersSnap.docs.map(async (doc) => {
+    const uid = doc.id;
+    const logSnap = await db.collection("users").doc(uid).collection("logs").doc(todayStr).get();
+
+    if (!logSnap.exists) {
+      await sendPush(
+        uid,
+        "🕙 Final reminder: Log your day",
+        "This is a quick reminder to submit today's log before the day ends.",
+        { type: "missed_log_late" }
+      );
+    }
+  });
+
+  await Promise.all(promises);
+  return null;
+});
+
 // Scheduled Job: Runs every day at 9:00 AM for Important Dates
 exports.checkImportantDates = functions.pubsub.schedule("every day 09:00").timeZone("Asia/Kolkata").onRun(async (context) => {
   const usersSnap = await db.collection("users").get();
@@ -112,4 +135,30 @@ exports.cleanupNotifications = functions.pubsub.schedule("every sunday 03:00").o
     });
     
     await Promise.all(promises);
+});
+
+// Scheduled Job: Runs every day at 7:00 AM to send Good Morning messages and reminders
+exports.morningGreeting = functions.pubsub.schedule("every day 07:00").timeZone("Asia/Kolkata").onRun(async (context) => {
+  const usersSnap = await db.collection("users").get();
+
+  const greetings = [
+   "Good morning 🌿 Take a deep breath and begin.",
+  "Good morning ☀️ A fresh day, a fresh page.",
+  "Wake up gently 🌸 Today is yours.",
+  "Good morning ✨ Let today flow naturally.",
+  "A new morning, a new chance 🌤️",
+  "Good morning 🌼 Start slow. Start kind.",
+  "Rise and reflect 🌅 Your day begins now.",
+  "Good morning 🤍 Write today with intention."
+  ];
+
+  const promises = usersSnap.docs.map(async (doc) => {
+    const uid = doc.id;
+    // Pick a random greeting
+    const body = greetings[Math.floor(Math.random() * greetings.length)];
+    await sendPush(uid, "Good Morning!", body, { type: "good_morning" });
+  });
+
+  await Promise.all(promises);
+  return null;
 });
