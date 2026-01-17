@@ -288,43 +288,7 @@ const Month = () => {
 
   // --- Views ---
 
-  const EditorView = () => {
-    // ... (Keep existing Editor View) ...
-    const block = blocks.find(b => b.id === editingBlockId);
-    if (!block) return null;
-
-    return (
-      <motion.div 
-          initial={{ opacity: 0, y: '100%' }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: '100%' }}
-          className={`fixed inset-0 z-50 flex flex-col bg-[#FDFBF7] dark:bg-[#111]`}
-      >
-          <div className={`px-6 py-4 flex items-center justify-between border-b ${isDarkMode ? 'border-gray-800' : 'border-[#EAE0D5]'} shrink-0`}>
-              <button 
-                  onClick={() => setEditingBlockId(null)}
-                  className={`p-2 rounded-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}
-              >
-                  <FiArrowLeft size={20} />
-              </button>
-              <span className="font-bold text-lg">{block.title}</span>
-              <div className="flex items-center gap-3">
-                   {lastSaved && <span className="text-xs text-green-500 font-bold">Saved</span>}
-                   <button onClick={() => handleDeleteBlock(block.id)} className="text-red-400"><FiTrash2/></button>
-              </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-6 md:p-12 max-w-3xl mx-auto w-full">
-              <MonthlyJournalBlock 
-                  block={block} 
-                  onUpdate={handleUpdateBlock} 
-                  onDelete={handleDeleteBlock} 
-                  isDarkMode={isDarkMode}
-              />
-          </div>
-      </motion.div>
-    );
-  };
+  // Inline editor will be rendered inside the grid to avoid fixed overlay jumps on mobile.
 
   const MonthCalendar = () => {
       const start = startOfMonth(selectedDate);
@@ -737,17 +701,39 @@ const Month = () => {
             <div className="flex flex-col gap-4">
                 {blocks.map((block, i) => (
                     <div 
-                        key={block.id} 
-                        onClick={() => setEditingBlockId(block.id)}
-                        className={`p-6 rounded-[2rem] border cursor-pointer hover:border-indigo-300 transition-all ${isDarkMode ? 'bg-[#1C1C1E] border-gray-800' : 'bg-white border-gray-100'}`}
+                        key={block.id}
+                        className={`p-6 rounded-[2rem] border hover:border-indigo-300 transition-all ${isDarkMode ? 'bg-[#1C1C1E] border-gray-800' : 'bg-white border-gray-100'}`}
                     >
                         <div className="flex items-center gap-3 mb-3">
                              {getBlockIcon(block.type)}
                              <h4 className="font-bold">{block.title}</h4>
+                             <div className="ml-auto">
+                                 <button onClick={() => setEditingBlockId(block.id)} className="p-2 rounded-md text-sm text-indigo-600 hover:bg-indigo-50">Edit</button>
+                             </div>
                         </div>
-                        <div className="pl-8 text-sm opacity-60">
-                             {getBlockSummary(block)}
-                        </div>
+
+                        {editingBlockId === block.id ? (
+                          <div className="pl-0 text-sm opacity-100">
+                              <div className={`px-4 py-3 mb-4 border-b ${isDarkMode ? 'border-gray-800' : 'border-gray-100'} flex items-center gap-3`}> 
+                                  <button onClick={() => setEditingBlockId(null)} className="p-2 rounded-full bg-gray-100 dark:bg-gray-800"><FiArrowLeft/></button>
+                                  <div className="flex-1 font-bold">{block.title}</div>
+                                  <div className="flex items-center gap-2">
+                                      {lastSaved && <span className="text-xs text-green-500 font-bold">Saved</span>}
+                                      <button onClick={() => handleDeleteBlock(block.id)} className="text-red-400"><FiTrash2/></button>
+                                  </div>
+                              </div>
+                              <MonthlyJournalBlock 
+                                  block={block} 
+                                  onUpdate={handleUpdateBlock} 
+                                  onDelete={handleDeleteBlock} 
+                                  isDarkMode={isDarkMode}
+                              />
+                          </div>
+                        ) : (
+                          <div className="pl-8 text-sm opacity-60">
+                               {getBlockSummary(block)}
+                          </div>
+                        )}
                     </div>
                 ))}
             </div>
@@ -765,7 +751,7 @@ const Month = () => {
          ) : (
              <AnimatePresence mode="wait">
                 {showYearView && <YearView key="year" />}
-                {editingBlockId ? <EditorView key="editor" /> : <GridView key="grid" />}
+                <GridView key="grid" />
             </AnimatePresence>
          )}
     </div>

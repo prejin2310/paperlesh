@@ -24,7 +24,7 @@ const WEATHER_OPTIONS = [
 const STEPS_OPTIONS = ['1k - 2.5K', '2.5k-5k', '5k-10k', '>10k'];
 
 // Updated Habits list logic will be handled via state
-const DEFAULT_HABITS = ['Workout', 'Skin Care', 'Wake up early', 'Meditation', 'Periods'];
+const DEFAULT_HABITS = ['Workout', 'Skin Care', 'Wake up early', 'Meditation'];
 
 const SPEND_OPTIONS = ['0', '<500', '<1000', '<2500', '<5000', '>5000'];
 

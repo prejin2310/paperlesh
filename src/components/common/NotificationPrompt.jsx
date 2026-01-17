@@ -103,7 +103,7 @@ const NotificationPrompt = () => {
         <div className="relative bg-yellow-50 dark:bg-yellow-900/80 rounded-xl shadow-xl p-4 border flex items-start gap-3">
           <div className="flex-1">
             <div className="font-bold text-sm mb-1">Browser not fully supported</div>
-            <div className="text-xs text-slate-700 dark:text-yellow-200 mb-3">Safari on iOS does not support Web Push. To receive push notifications, please open this site in Chrome or Edge (Android/desktop) or use the web on a supported browser.</div>
+            <div className="text-xs text-slate-700 dark:text-yellow-200 mb-3">Safari on iOS does not support Web Push. To receive push notifications, please open this site in Chrome/Edge or use the web on a supported browser.</div>
             <div className="flex gap-2">
               <button onClick={() => window.location.href = '/'} className="px-3 py-2 bg-indigo-600 text-white rounded-md text-sm">Go to Homepage</button>
               <button onClick={() => setVisible(false)} className="px-3 py-2 bg-gray-100 dark:bg-slate-800 text-sm rounded-md">Dismiss</button>

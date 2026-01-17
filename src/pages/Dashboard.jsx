@@ -55,7 +55,6 @@ const MOOD_COLORS = ['#fbbf24', '#facc15', '#ec4899', '#9ca3af', '#60a5fa', '#81
 const DEFAULT_QUICK_LINKS = [
     { id: 'tool-important-dates', title: 'Important Dates', emoji: '🎂', subtitle: 'Birthdays & Events', type: 'important-dates', color: 'pink' },
     { id: 'tool-bucket', title: '2026 Goals', emoji: '🌍', subtitle: 'Dream big', type: 'bucket-list-2026', color: 'orange' },
-    { id: 'log-pause', title: 'Pause & Reflect', emoji: '🌱', subtitle: 'Gratitude check', type: 'log', color: 'rose' },
     { id: 'tool-todo', title: 'Daily Tasks', emoji: '📝', subtitle: 'Get things done', type: 'todo-list', color: 'indigo' },
 ];
 

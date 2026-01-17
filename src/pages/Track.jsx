@@ -172,7 +172,6 @@ const Track = () => {
                     setTrackedHabits(JSON.parse(savedHabits));
                 } else {
                     const defaults = [...BASE_HABITS];
-                    if (currentUser?.gender?.toLowerCase() === 'female') defaults.push('Period Tracker');
                     setTrackedHabits(defaults);
                     localStorage.setItem('user_tracked_habits', JSON.stringify(defaults));
                 }

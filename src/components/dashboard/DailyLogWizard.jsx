@@ -45,7 +45,6 @@ const DailyLogWizard = ({ isOpen, onClose, date, initialData, onSave }) => {
   useEffect(() => {
     // Load Habits (Base + LocalStorage Custom)
     let habits = [...BASE_HABITS];
-    if (currentUser?.gender && currentUser.gender.toLowerCase() === 'female') habits.push('Periods');
 
     const saved = localStorage.getItem('user_tracked_habits');
     if (saved) {

@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiPlus, FiTrash2, FiMove, FiArrowUp, FiArrowDown, FiCheck, FiSave } from 'react-icons/fi';
 
 const AVAILABLE_TOOLS = [
-    { id: 'log-pause', title: 'Pause & Reflect', emoji: '🌱', subtitle: 'Gratitude check', type: 'log', color: 'rose' },
     { id: 'log-intention', title: 'Set Intentions', emoji: '🤔', subtitle: 'How to feel?', type: 'log', color: 'indigo' },
     { id: 'log-emotion', title: 'Emotions', emoji: '💭', subtitle: 'Breathe it out', type: 'log', color: 'emerald' },
     { id: 'tool-bucket2026', title: 'Bucket List 2026', emoji: '🌍', subtitle: 'Yearly Goals', type: 'bucket-list-2026', color: 'orange' },
