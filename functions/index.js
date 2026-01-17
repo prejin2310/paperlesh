@@ -151,8 +151,8 @@ exports.cleanupNotifications = functions.pubsub.schedule("every sunday 03:00").o
     await Promise.all(promises);
 });
 
-// Scheduled Job: Runs every day at 7:00 AM to send Good Morning messages and reminders
-exports.morningGreeting = functions.pubsub.schedule("every day 07:00").timeZone("Asia/Kolkata").onRun(async (context) => {
+// Scheduled Job: Runs every day at 8:02 AM to send Good Morning messages and reminders
+exports.morningGreeting = functions.pubsub.schedule("every day 08:02").timeZone("Asia/Kolkata").onRun(async (context) => {
   const usersSnap = await db.collection("users").get();
 
   const greetings = [
