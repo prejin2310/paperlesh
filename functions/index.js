@@ -23,7 +23,21 @@ const sendPush = async (uid, title, body, data = {}) => {
 
   // 1. Send to FCM
   try {
-    await admin.messaging().sendToDevice(token, payload);
+    // Prefer the HTTP v1 style message for web push to ensure proper webpush headers
+    const message = {
+      token: token,
+      webpush: {
+        notification: {
+          title: payload.notification.title,
+          body: payload.notification.body,
+          icon: payload.notification.icon || '/pwa-192x192.png',
+          badge: payload.notification.badge || '/pwa-192x192.png'
+        }
+      },
+      data: Object.keys(data || {}).reduce((acc, k) => ({ ...acc, [k]: String(data[k]) }), {})
+    };
+
+    await admin.messaging().send(message);
     console.log(`Sent to ${uid}`);
   } catch (e) {
     console.error(`Error sending to ${uid}`, e);
