@@ -9,6 +9,7 @@ const NotificationPrompt = () => {
   const [visible, setVisible] = useState(false);
   const [denied, setDenied] = useState(false);
   const [permission, setPermission] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
+  const [unsupported, setUnsupported] = useState(false);
 
   useEffect(() => {
     if (typeof Notification === 'undefined') {
