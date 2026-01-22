@@ -19,6 +19,24 @@ const DEFAULT_BLOCKS = [
     { id: '6', type: 'text', title: 'Highlights & Top Accomplishments', content: '' },
 ];
 
+const StatCard = ({ title, value, sub, icon, bgClass, textClass, onClick, isDarkMode }) => (
+    <div onClick={onClick} className={`p-6 rounded-[2rem] flex flex-col justify-between min-h-[160px] relative overflow-hidden group cursor-pointer transition-all ${isDarkMode ? 'bg-[#1C1C1E] hover:bg-gray-800' : 'bg-white hover:bg-gray-50'} shadow-sm`}>
+        <div className="flex justify-between items-start z-10">
+            <div className={`p-3 rounded-2xl ${bgClass} bg-opacity-20 ${textClass}`}>
+                {icon}
+            </div>
+            <FiArrowLeft className={`rotate-180 opacity-0 group-hover:opacity-100 transition-opacity ${textClass}`} />
+        </div>
+        <div className="z-10 mt-4">
+            <h3 className="text-3xl font-black tracking-tight">{value}</h3>
+            <p className="text-xs font-bold uppercase tracking-wider opacity-60 mt-1">{title}</p>
+            {sub && <p className="text-[10px] mt-2 opacity-40 font-medium">{sub}</p>}
+        </div>
+        {/* Decorative Blob */}
+        <div className={`absolute -bottom-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity ${textClass.replace('text', 'bg')}`} />
+    </div>
+);
+
 const Month = () => {
   const { currentUser } = useAuth();
   const { isDarkMode } = useTheme();
@@ -290,7 +308,7 @@ const Month = () => {
 
   // Inline editor will be rendered inside the grid to avoid fixed overlay jumps on mobile.
 
-  const MonthCalendar = () => {
+  const renderMonthCalendar = () => {
       const start = startOfMonth(selectedDate);
       const end = endOfMonth(selectedDate);
       const days = eachDayOfInterval({ start, end });
@@ -376,13 +394,14 @@ const Month = () => {
       );
   };
   
-    const YearView = () => {
+    const renderYearView = () => {
         const yearStart = startOfYear(selectedDate);
         const yearEnd = endOfYear(selectedDate);
         const months = eachMonthOfInterval({ start: yearStart, end: yearEnd });
 
         return (
             <motion.div 
+                key="year"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
@@ -421,26 +440,10 @@ const Month = () => {
         );
     };
 
-  const StatCard = ({ title, value, sub, icon, bgClass, textClass, onClick }) => (
-      <div onClick={onClick} className={`p-6 rounded-[2rem] flex flex-col justify-between min-h-[160px] relative overflow-hidden group cursor-pointer transition-all ${isDarkMode ? 'bg-[#1C1C1E] hover:bg-gray-800' : 'bg-white hover:bg-gray-50'} shadow-sm`}>
-          <div className="flex justify-between items-start z-10">
-              <div className={`p-3 rounded-2xl ${bgClass} bg-opacity-20 ${textClass}`}>
-                  {icon}
-              </div>
-              <FiArrowLeft className={`rotate-180 opacity-0 group-hover:opacity-100 transition-opacity ${textClass}`} />
-          </div>
-          <div className="z-10 mt-4">
-              <h3 className="text-3xl font-black tracking-tight">{value}</h3>
-              <p className="text-xs font-bold uppercase tracking-wider opacity-60 mt-1">{title}</p>
-              {sub && <p className="text-[10px] mt-2 opacity-40 font-medium">{sub}</p>}
-          </div>
-          {/* Decorative Blob */}
-          <div className={`absolute -bottom-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity ${textClass.replace('text', 'bg')}`} />
-      </div>
-  );
 
-  const GridView = () => (
+  const renderGridView = () => (
       <motion.div 
+        key="grid"
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
         exit={{ opacity: 0 }}
@@ -515,7 +518,7 @@ const Month = () => {
                     </AnimatePresence>
                 </div>
             </div>
-            <MonthCalendar />
+            {renderMonthCalendar()}
             
             {/* Dynamic Legend (Moved Below) */}
             <div className="flex flex-wrap justify-center gap-3 mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
@@ -649,6 +652,7 @@ const Month = () => {
                 icon={<FiStar size={20}/>}
                 bgClass="bg-orange-100 dark:bg-orange-900/40"
                 textClass="text-orange-600 dark:text-orange-400"
+                isDarkMode={isDarkMode}
             />
             <StatCard 
                 title="Mood Flow" 
@@ -657,6 +661,7 @@ const Month = () => {
                 icon={<FiSmile size={20}/>}
                 bgClass="bg-yellow-100 dark:bg-yellow-900/40"
                 textClass="text-yellow-600 dark:text-yellow-400"
+                isDarkMode={isDarkMode}
             />
             <StatCard 
                 title="Avg Sleep" 
@@ -665,6 +670,7 @@ const Month = () => {
                 icon={<FiMoon size={20}/>}
                 bgClass="bg-indigo-100 dark:bg-indigo-900/40"
                 textClass="text-indigo-600 dark:text-indigo-400"
+                isDarkMode={isDarkMode}
             />
             <StatCard 
                 title="Money" 
@@ -673,6 +679,7 @@ const Month = () => {
                 icon={<FiDollarSign size={20}/>}
                 bgClass="bg-emerald-100 dark:bg-emerald-900/40"
                 textClass="text-emerald-600 dark:text-emerald-400"
+                isDarkMode={isDarkMode}
             />
              <StatCard 
                 title="Activity" 
@@ -681,6 +688,7 @@ const Month = () => {
                 icon={<FiActivity size={20}/>}
                 bgClass="bg-rose-100 dark:bg-rose-900/40"
                 textClass="text-rose-600 dark:text-rose-400"
+                isDarkMode={isDarkMode}
             />
              <StatCard 
                 title="Habits" 
@@ -689,6 +697,7 @@ const Month = () => {
                 icon={<FiCheckSquare size={20}/>}
                 bgClass="bg-blue-100 dark:bg-blue-900/40"
                 textClass="text-blue-600 dark:text-blue-400"
+                isDarkMode={isDarkMode}
             />
         </div>
 
@@ -750,8 +759,8 @@ const Month = () => {
              </div>
          ) : (
              <AnimatePresence mode="wait">
-                {showYearView && <YearView key="year" />}
-                <GridView key="grid" />
+                {showYearView && renderYearView()}
+                {renderGridView()}
             </AnimatePresence>
          )}
     </div>

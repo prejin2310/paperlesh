@@ -1,0 +1,224 @@
+@import "tailwindcss";
+
+/* 
+  TIME-BASED PREMIUM THEME
+  Weather-app inspired atmospheric backgrounds
+*/
+
+/* --- 1. MORNING (Sunrise, Fresh start) --- */
+.dashboard-morning {
+  position: relative;
+  background: linear-gradient(180deg, #ffd6a5 0%, #fff0dc 50%, #ffffff 100%);
+  transition: background 1s ease-in-out;
+}
+
+.dark .dashboard-morning {
+  background: linear-gradient(180deg, #3f2e18 0%, #1f160a 100%);
+}
+
+/* Warm glow from top-left */
+.morning-atmosphere::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: -20%;
+  width: 120%;
+  height: 60%;
+  background: radial-gradient(circle, rgba(255, 166, 0, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
+  filter: blur(80px);
+  animation: dawn-rise 20s infinite ease-in-out alternate;
+  pointer-events: none;
+}
+.dark .morning-atmosphere::before {
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+}
+
+/* --- 2. NOON (Bright Sky, Energy) --- */
+.dashboard-noon {
+  position: relative;
+  background: linear-gradient(180deg, #A7D8FF 0%, #ECF6FF 100%);
+  transition: background 1s ease-in-out;
+}
+.dark .dashboard-noon {
+  background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 100%);
+}
+
+/* Sun glare effect */
+.noon-atmosphere::before {
+    content: '';
+    position: absolute;
+    top: -10%;
+    right: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 60%);
+    filter: blur(60px);
+    animation: sun-pulse 8s infinite alternate;
+    pointer-events: none;
+}
+.dark .noon-atmosphere::before {
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.2) 0%, transparent 60%);
+}
+
+/* --- 3. EVENING (Sunset, Calm) --- */
+.dashboard-evening {
+  position: relative;
+  background: linear-gradient(180deg, #FFC4C4 0%, #EAD6FF 60%, #F3E8FF 100%);
+  transition: background 1s ease-in-out;
+}
+.dark .dashboard-evening {
+  background: linear-gradient(180deg, #2e1065 0%, #4c1d95 60%, #581c87 100%);
+}
+
+.evening-atmosphere::before {
+    content: '';
+    position: absolute;
+    bottom: -10%;
+    left: 0;
+    width: 100%;
+    height: 60%;
+    background: linear-gradient(to top, rgba(244, 114, 182, 0.2), transparent);
+    filter: blur(40px);
+    pointer-events: none;
+    animation: twilight-drift 15s infinite ease-in-out;
+}
+.dark .evening-atmosphere::before {
+    background: linear-gradient(to top, rgba(192, 38, 211, 0.2), transparent);
+}
+
+
+/* --- 4. NIGHT (Deep Sleep, Stars) --- */
+.dashboard-night {
+  position: relative;
+  /* Light Mode Night: Soft moonlit sky (Indigo/Purple tint) that supports Dark Text */
+  background: linear-gradient(180deg, #dbeafe 0%, #e0e7ff 100%);
+  transition: background 1s ease-in-out;
+}
+.dark .dashboard-night {
+  background: linear-gradient(180deg, #020617 0%, #0F172A 60%, #1E293B 100%);
+}
+
+.night-atmosphere::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Default (Light Mode) stars: Subtle Slate */
+    background-image: 
+        radial-gradient(1.5px 1.5px at 15% 15%, #94a3b8 100%, transparent),
+        radial-gradient(1px 1px at 35% 25%, #94a3b8 90%, transparent),
+        radial-gradient(2px 2px at 75% 35%, #cbd5e1 80%, transparent),
+        radial-gradient(1px 1px at 85% 65%, #94a3b8 90%, transparent),
+        radial-gradient(1.5px 1.5px at 55% 85%, #94a3b8 100%, transparent);
+    background-size: 500px 500px;
+    opacity: 0.6;
+    animation: stars-twinkle 6s infinite alternate;
+    pointer-events: none;
+}
+
+.dark .night-atmosphere::before {
+    /* Dark Mode stars: Bright White */
+    background-image: 
+        radial-gradient(1.5px 1.5px at 15% 15%, #ffffff 100%, transparent),
+        radial-gradient(1px 1px at 35% 25%, #ffffff 90%, transparent),
+        radial-gradient(2px 2px at 75% 35%, #ffffff 80%, transparent),
+        radial-gradient(1px 1px at 85% 65%, #ffffff 90%, transparent),
+        radial-gradient(1.5px 1.5px at 55% 85%, #ffffff 100%, transparent);
+}
+
+/* Animations */
+@keyframes dawn-rise {
+    0% { transform: translateY(0) scale(1); opacity: 0.6; }
+    100% { transform: translateY(-20px) scale(1.1); opacity: 0.8; }
+}
+
+@keyframes sun-pulse {
+    0% { transform: scale(1); opacity: 0.5; }
+    100% { transform: scale(1.2); opacity: 0.8; }
+}
+
+@keyframes twilight-drift {
+    0% { transform: translateX(-2%) translateY(0); }
+    50% { transform: translateX(2%) translateY(-10px); }
+    100% { transform: translateX(-2%) translateY(0); }
+}
+
+@keyframes stars-twinkle {
+    0% { opacity: 0.4; }
+    100% { opacity: 0.9; }
+}
+
+
+/* --- MY JOURNAL CARD THEMES --- */
+/* The card should feel like glass floating on the background */
+
+.journal-card-base {
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Morning Card */
+.card-morning-premium {
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 
+        0 8px 32px 0 rgba(255, 166, 0, 0.15),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+.dark .card-morning-premium {
+    background: rgba(40, 25, 10, 0.6);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Noon Card */
+.card-noon-premium {
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 
+        0 8px 32px 0 rgba(14, 165, 233, 0.15),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+.dark .card-noon-premium {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Evening Card */
+.card-evening-premium {
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 
+        0 8px 32px 0 rgba(192, 38, 211, 0.15),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+.dark .card-evening-premium {
+    background: rgba(46, 16, 101, 0.5);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Night Card */
+.card-night-premium {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 
+        0 8px 32px 0 rgba(30, 41, 59, 0.2),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+.dark .card-night-premium {
+    background: rgba(2, 6, 23, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+}
+

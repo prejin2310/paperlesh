@@ -49,6 +49,7 @@ import NotificationPanel from '../components/dashboard/NotificationPanel';
 import { useNotifications } from '../hooks/useNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import './Dashboard.css';
 
 const MOOD_COLORS = ['#fbbf24', '#facc15', '#ec4899', '#9ca3af', '#60a5fa', '#818cf8', '#ef4444', '#3b82f6']; // Approximate colors for moods
 
@@ -427,16 +428,8 @@ const Dashboard = () => {
               </div>
 
               <div className="flex items-center gap-1 backdrop-blur-md p-1 rounded-full border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 shadow-sm transition-all hover:scale-105 duration-300">
-                   <button 
-                        onClick={toggleTheme}
-                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                        aria-label="Toggle Theme"
-                    >
-                        {isDarkMode ? <FiMoon size={18} /> : <FiSun size={18} />}
-                    </button>
-
-                   <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 opacity-50"></div>
-
+                   {/* Theme toggle removed */}
+                   
                    <button 
                         onClick={() => setIsNotificationsOpen(true)}
                         className="relative p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -461,40 +454,10 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#F6F5F2] dark:bg-[#0a0a0a] font-sans transition-colors duration-500">
+    <div className={`min-h-screen relative overflow-hidden font-sans transition-colors duration-1000 dashboard-${timeOfDay}`}>
       
-      {/* Ambient Background Animation - Time Based */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden transition-colors duration-1000 ease-in-out">
-           {/* Base Gradient Layer */}
-           <div className={`absolute inset-0 transition-colors duration-1000 ${
-               timeOfDay === 'morning' ? 'bg-orange-50/50 dark:bg-[#0f0c08]' :
-               timeOfDay === 'noon' ? 'bg-sky-50/50 dark:bg-[#080c14]' :
-               timeOfDay === 'evening' ? 'bg-indigo-50/50 dark:bg-[#0a0612]' :
-               'bg-slate-50/50 dark:bg-[#050505]'
-           }`} />
-
-           {/* Animated Blobs */}
-           <div className={`absolute -top-40 -left-20 w-[600px] h-[600px] rounded-full mix-blend-multiply dark:mix-blend-screen blur-[120px] animate-blob transition-colors duration-1000 ${
-               timeOfDay === 'morning' ? 'bg-amber-200/40 dark:bg-amber-800/20' :
-               timeOfDay === 'noon' ? 'bg-sky-200/40 dark:bg-sky-800/20' :
-               timeOfDay === 'evening' ? 'bg-purple-300/40 dark:bg-purple-800/20' :
-               'bg-indigo-900/20 dark:bg-indigo-900/20'
-           }`} />
-           
-           <div className={`absolute top-20 -right-40 w-[500px] h-[500px] rounded-full mix-blend-multiply dark:mix-blend-screen blur-[120px] animate-blob animation-delay-2000 transition-colors duration-1000 ${
-               timeOfDay === 'morning' ? 'bg-rose-200/40 dark:bg-rose-800/20' :
-               timeOfDay === 'noon' ? 'bg-cyan-200/40 dark:bg-cyan-800/20' :
-               timeOfDay === 'evening' ? 'bg-pink-300/40 dark:bg-pink-800/20' :
-               'bg-violet-900/20 dark:bg-violet-900/20'
-           }`} />
-           
-           <div className={`absolute -bottom-20 left-1/3 w-[600px] h-[600px] rounded-full mix-blend-multiply dark:mix-blend-screen blur-[120px] animate-blob animation-delay-4000 transition-colors duration-1000 ${
-               timeOfDay === 'morning' ? 'bg-yellow-100/40 dark:bg-yellow-800/10' :
-               timeOfDay === 'noon' ? 'bg-blue-100/40 dark:bg-blue-800/10' :
-               timeOfDay === 'evening' ? 'bg-orange-200/40 dark:bg-orange-800/10' :
-               'bg-slate-800/20 dark:bg-slate-800/10'
-           }`} />
-      </div>
+      {/* Premium Atmosphere Animation Layer */}
+      <div className={`absolute inset-0 z-0 pointer-events-none ${timeOfDay}-atmosphere overflow-hidden opacity-100 dark:opacity-80 transition-opacity duration-1000`} />
 
       <div className="relative z-10 pb-32 pt-12 px-6">
         {/* Dynamic Hero Visuals based on Time of Day */}
@@ -748,7 +711,7 @@ const Dashboard = () => {
                                             // Handle main card click
                                             setIsModalOpen(true); 
                                         }}
-                                        className={`${card.bg} ${baseStyle} p-8 text-amber-900 dark:text-amber-50 group`}
+                                        className={`card-${timeOfDay}-premium journal-card-base ${baseStyle} p-8 text-slate-800 dark:text-slate-100 group`}
                                     >
                                          <div className="relative z-10 flex flex-col justify-between h-full pointer-events-none">
                                             <div>
