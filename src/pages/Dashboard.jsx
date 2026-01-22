@@ -757,7 +757,7 @@ const Dashboard = () => {
                                                         e.stopPropagation();
                                                         setIsModalOpen(true);
                                                     }}
-                                                    className={`px-4 py-2 backdrop-blur-sm rounded-full text-sm font-bold transition-colors ${isDarkMode ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-black/10 text-gray-900 hover:bg-black/20'}`}
+                                                    className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${isDarkMode ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-black/10 text-gray-900 hover:bg-black/20'}`}
                                                 >
                                                     Tap to Log
                                                 </button>
