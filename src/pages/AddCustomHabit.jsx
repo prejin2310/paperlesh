@@ -1,228 +1,225 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiCheck, FiType, FiHash, FiActivity, FiSmile, FiDroplet, FiBook, FiCode, FiCoffee, FiMusic, FiSun, FiMoon } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { FiX, FiCalendar, FiChevronDown, FiCheck } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
-const TRACKER_TYPES = [
-    { id: 'boolean', label: 'Yes / No', icon: FiCheck, desc: 'Simple completion tracking' },
-    { id: 'count', label: 'Counter', icon: FiHash, desc: 'Track number of times' },
-    { id: 'scale', label: 'Scale 1-5', icon: FiActivity, desc: 'Rate intensity or quality' },
-    { id: 'text', label: 'Short Text', icon: FiType, desc: 'Brief notes or inputs' },
-];
-
-const ICONS = [
-    { id: 'smile', icon: FiSmile },
-    { id: 'drop', icon: FiDroplet },
-    { id: 'book', icon: FiBook },
-    { id: 'code', icon: FiCode },
-    { id: 'coffee', icon: FiCoffee },
-    { id: 'music', icon: FiMusic },
-    { id: 'sun', icon: FiSun },
-    { id: 'moon', icon: FiMoon },
-    { id: 'check', icon: FiCheck },
-];
-
-const COLORS = [
-    'bg-rose-500', 'bg-orange-500', 'bg-amber-500', 
-    'bg-emerald-500', 'bg-teal-500', 'bg-blue-500', 
-    'bg-indigo-500', 'bg-purple-500', 'bg-pink-500', 'bg-gray-800'
+const DAYS = [
+    { label: 'M', value: 0 },
+    { label: 'T', value: 1 },
+    { label: 'W', value: 2 },
+    { label: 'T', value: 3 },
+    { label: 'F', value: 4 },
+    { label: 'S', value: 5 },
+    { label: 'S', value: 6 },
 ];
 
 const AddCustomHabit = () => {
     const navigate = useNavigate();
+    
+    // Form State
     const [name, setName] = useState('');
-    const [question, setQuestion] = useState('');
-    const [type, setType] = useState('boolean');
-    const [selectedIcon, setSelectedIcon] = useState('smile');
-    const [selectedColor, setSelectedColor] = useState('bg-black');
+    const [isGoalSet, setIsGoalSet] = useState(false);
+    const [goalDate, setGoalDate] = useState('');
+    const [goalAmount, setGoalAmount] = useState('');
+    
+    // Default to all days selected? Or none? Image shows Thursday selected. Let's select current day or none.
+    const [repeatDays, setRepeatDays] = useState([3]); // Example: Thursday
+    const [hasReminders, setHasReminders] = useState(true);
+
+    const toggleDay = (dayVal) => {
+        if (repeatDays.includes(dayVal)) {
+            setRepeatDays(prev => prev.filter(d => d !== dayVal));
+        } else {
+            setRepeatDays(prev => [...prev, dayVal]);
+        }
+    };
 
     const handleSave = () => {
         if (!name.trim()) return toast.error("Please name your habit");
-        
-        // Save logic to LocalStorage (Synched with Track.jsx)
+
+        // 1. Get Existing Habits (Simple List of Strings for compatibility)
         const saved = localStorage.getItem('user_tracked_habits');
         let currentHabits = [];
-        if (saved) {
-            try {
-                currentHabits = JSON.parse(saved);
-            } catch (e) {
-                currentHabits = [];
-            }
+        try {
+            currentHabits = saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            currentHabits = [];
         }
 
         if (currentHabits.includes(name.trim())) {
             return toast.error("Habit already exists!");
         }
 
+        // 2. Add New Habit Name
         const newHabits = [...currentHabits, name.trim()];
         localStorage.setItem('user_tracked_habits', JSON.stringify(newHabits));
+
+        // 3. Save Detailed Config (Future Proofing)
+        const configData = {
+            name: name.trim(),
+            goal: isGoalSet ? { date: goalDate, amount: goalAmount } : null,
+            repeatDays,
+            reminders: hasReminders,
+            createdAt: new Date().toISOString()
+        };
         
-        toast.success("Custom Habit Created!");
+        // Load existing configs
+        const storedConfigs = localStorage.getItem('habit_configs');
+        let configs = {};
+        try { configs = storedConfigs ? JSON.parse(storedConfigs) : {}; } catch(e) {}
+        
+        configs[name.trim()] = configData;
+        localStorage.setItem('habit_configs', JSON.stringify(configs));
+
+        toast.success("Habit created successfully!");
         navigate(-1);
     };
 
     return (
-        <div className="min-h-screen relative overflow-hidden bg-[#F6F5F2] dark:bg-[#0a0a0a] transition-colors duration-500 pt-6 pb-24 px-4">
-            
-            {/* Ambient Background Animation - Scaled Down */}
-            <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-                <motion.div 
-                    animate={{ 
-                        scale: [1, 1.2, 1],
-                        opacity: [0.3, 0.5, 0.3], 
-                        x: [0, 50, 0],
-                        y: [0, 30, 0]
-                    }}
-                    transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute -top-10 -left-10 w-72 h-72 bg-amber-200/40 dark:bg-amber-900/20 rounded-full mix-blend-multiply dark:mix-blend-screen blur-3xl"
-                />
-                <motion.div 
-                    animate={{ 
-                        scale: [1, 1.1, 1],
-                        opacity: [0.3, 0.6, 0.3],
-                        x: [0, -30, 0],
-                        y: [0, 50, 0]
-                    }}
-                    transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-                    className="absolute top-20 -right-10 w-60 h-60 bg-rose-200/40 dark:bg-rose-900/20 rounded-full mix-blend-multiply dark:mix-blend-screen blur-3xl"
-                />
+        <div className="fixed inset-0 z-50 bg-[#FDFBF7] dark:bg-[#121212] flex flex-col overflow-hidden transition-colors duration-300">
+            {/* Header */}
+            <div className="px-6 py-6 flex items-center justify-between">
+                <div className="w-10" /> {/* Spacer */}
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">New habit</h1>
+                <button 
+                    onClick={() => navigate(-1)}
+                    className="w-10 h-10 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors shadow-sm"
+                >
+                    <FiX size={24} />
+                </button>
             </div>
 
-            <div className="relative z-10 max-w-md mx-auto space-y-5">
-                {/* Glassy Header - Compact */}
-                <div className="flex items-center gap-3 mb-1">
-                    <button 
-                        onClick={() => navigate(-1)} 
-                        className="p-2.5 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md rounded-full border border-white/50 dark:border-gray-700 shadow-sm hover:scale-105 transition-all text-gray-800 dark:text-white"
-                    >
-                        <FiArrowLeft size={20} />
-                    </button>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">New Tracker</h1>
-                        <p className="text-gray-500 dark:text-gray-400 font-medium text-xs">Design your habit</p>
-                    </div>
-                </div>
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto px-6 pb-24">
+                <div className="max-w-md mx-auto space-y-8">
+                    
+                    {/* Illustration */}
+                    <div className="flex justify-center py-4">
+                        <div className="relative">
+                            {/* Cute Calendar Graphic */}
+                            <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M100 25H20C14.4772 25 10 29.4772 10 35V100C10 105.523 14.4772 110 20 110H100C105.523 110 110 105.523 110 100V35C110 29.4772 105.523 25 100 25Z" fill="#A3D92A" stroke="#658818" strokeWidth="3"/>
+                                <rect x="25" y="45" width="20" height="20" rx="4" fill="white" stroke="#3F3F46" strokeWidth="2"/>
+                                <rect x="50" y="45" width="20" height="20" rx="4" fill="white" stroke="#3F3F46" strokeWidth="2"/>
+                                <rect x="75" y="45" width="20" height="20" rx="4" fill="white" stroke="#3F3F46" strokeWidth="2"/>
+                                <rect x="25" y="70" width="20" height="20" rx="4" fill="white" stroke="#3F3F46" strokeWidth="2"/>
+                                <rect x="50" y="70" width="20" height="20" rx="4" fill="#A3D92A" stroke="#658818" strokeWidth="2"/>
+                                <rect x="75" y="70" width="20" height="20" rx="4" fill="white" stroke="#3F3F46" strokeWidth="2"/>
+                                
+                                {/* Spirals */}
+                                <path d="M30 15V35" stroke="#F97316" strokeWidth="4" strokeLinecap="round"/>
+                                <path d="M50 15V35" stroke="#A3D92A" strokeWidth="4" strokeLinecap="round"/>
+                                <path d="M70 15V35" stroke="#A3D92A" strokeWidth="4" strokeLinecap="round"/>
+                                <path d="M90 15V35" stroke="#A3D92A" strokeWidth="4" strokeLinecap="round"/>
 
-                {/* 1. Name Section - Compact Glass Card */}
-                <section className="bg-white/60 dark:bg-gray-800/40 backdrop-blur-xl p-5 rounded-[2rem] shadow-xl shadow-gray-200/50 dark:shadow-none border border-white/50 dark:border-gray-700 relative overflow-hidden group">
-                    <div className="relative z-10">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2 block">What to track?</label>
+                                {/* Squiggles */}
+                                <path d="M5 45C5 45 0 40 5 35" stroke="#F97316" strokeWidth="3" strokeLinecap="round"/>
+                                <path d="M115 40L118 35" stroke="#F472B6" strokeWidth="3" strokeLinecap="round"/>
+                                <path d="M112 45L115 40" stroke="#F472B6" strokeWidth="3" strokeLinecap="round"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    {/* Name Input */}
+                    <div className="space-y-3">
+                        <label className="text-gray-600 dark:text-gray-400 text-sm font-medium ml-1">Name your habit</label>
                         <input 
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="e.g. Meditation" 
-                            className="w-full text-xl font-black bg-transparent border-b-2 border-gray-200 dark:border-gray-700 pb-1 outline-none focus:border-black dark:focus:border-white transition-colors placeholder-gray-300 dark:placeholder-gray-600 text-gray-900 dark:text-white"
-                            autoFocus
-                        />
-                        <input 
-                            value={question}
-                            onChange={(e) => setQuestion(e.target.value)}
-                            placeholder="Prompt Question? (Optional)" 
-                            className="w-full mt-3 text-sm font-medium bg-transparent outline-none placeholder-gray-400 dark:placeholder-gray-500 text-gray-600 dark:text-gray-300"
+                            placeholder="Morning Meditations"
+                            className="w-full bg-white dark:bg-gray-800 p-4 rounded-2xl text-lg font-medium text-gray-900 dark:text-white border-none shadow-sm placeholder-gray-300 focus:ring-2 focus:ring-orange-500 focus:outline-none transition-all"
                         />
                     </div>
-                </section>
 
-                {/* 2. Type Selection - Compact Grid */}
-                <section>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3 block ml-4">Tracker Type</label>
-                    <div className="grid grid-cols-2 gap-3">
-                        {TRACKER_TYPES.map((t) => {
-                            const Icon = t.icon;
-                            const isSelected = type === t.id;
-                            return (
-                                <button
-                                    key={t.id}
-                                    onClick={() => setType(t.id)}
-                                    className={`p-3 rounded-2xl flex items-center gap-3 transition-all text-left border ${
-                                        isSelected 
-                                        ? 'bg-black dark:bg-white border-black dark:border-white text-white dark:text-black shadow-lg scale-[1.01]' 
-                                        : 'bg-white/60 dark:bg-gray-800/40 backdrop-blur-md border-white/50 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800'
-                                    }`}
-                                >
-                                    <div className={`p-1.5 rounded-full w-fit ${isSelected ? 'bg-white/20' : 'bg-gray-100 dark:bg-gray-700'}`}>
-                                        <Icon size={16} />
-                                    </div>
-                                    <div>
-                                        <div className="font-bold text-sm leading-tight">{t.label}</div>
-                                        <div className={`text-[9px] uppercase font-bold tracking-wide opacity-70`}>{t.desc.split(' ')[0]}</div>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </section>
-
-                {/* 3. Style Selection - Compact */}
-                <section className="bg-white/60 dark:bg-gray-800/40 backdrop-blur-xl p-5 rounded-[2rem] shadow-xl shadow-gray-200/50 dark:shadow-none border border-white/50 dark:border-gray-700">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4 block">Customize Look</label>
-                    
-                    {/* Icons */}
-                    <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4">
-                        {ICONS.map((iconOpt) => {
-                            const Icon = iconOpt.icon;
-                            const isSelected = selectedIcon === iconOpt.id;
-                            return (
-                                <button
-                                    key={iconOpt.id}
-                                    onClick={() => setSelectedIcon(iconOpt.id)}
-                                    className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                                        isSelected 
-                                        ? 'bg-black dark:bg-white text-white dark:text-black shadow-lg scale-110' 
-                                        : 'bg-gray-50 dark:bg-gray-700/50 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                    }`}
-                                >
-                                    <Icon size={18} />
-                                </button>
-                            )
-                        })}
-                    </div>
-
-                    {/* Colors */}
-                     <div className="flex gap-3 overflow-x-auto no-scrollbar pt-1 pl-1">
-                        {COLORS.map((color) => {
-                            const isSelected = selectedColor === color;
-                            return (
-                                <button
-                                    key={color}
-                                    onClick={() => setSelectedColor(color)}
-                                    className={`flex-shrink-0 w-8 h-8 rounded-full transition-all ${color} ${isSelected ? 'ring-2 ring-offset-2 ring-gray-200 dark:ring-gray-600 scale-110 shadow-lg' : 'hover:scale-110 opacity-70 hover:opacity-100'}`}
-                                />
-                            )
-                        })}
-                    </div>
-                </section>
-
-                {/* Preview */}
-                <div className="relative">
-                    <label className="absolute -top-2 left-6 px-2 bg-[#F6F5F2] dark:bg-black text-[9px] font-bold uppercase tracking-widest text-gray-400 z-20">Preview Card</label>
-                    <motion.div 
-                        layout
-                        className="p-4 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-between shadow-xl shadow-gray-200/50 dark:shadow-none"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-[0.8rem] ${selectedColor} flex items-center justify-center text-white shadow-lg shadow-gray-300 dark:shadow-none`}>
-                                <FiActivity size={20} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-gray-900 dark:text-white text-base">{name || 'Tracker Name'}</h3>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">{type}</p>
-                            </div>
+                    {/* Goal Section */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <label className="text-gray-600 dark:text-gray-400 text-sm font-medium ml-1">Set a goal</label>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" checked={isGoalSet} onChange={(e) => setIsGoalSet(e.target.checked)} className="sr-only peer" />
+                                <div className={`w-6 h-6 border-2 border-gray-300 dark:border-gray-600 rounded-md transition-all flex items-center justify-center ${isGoalSet ? 'bg-orange-500 border-orange-500' : 'bg-transparent'}`}>
+                                    {isGoalSet && <FiCheck className="text-white" size={16} />}
+                                </div>
+                            </label>
                         </div>
-                        <div className="px-3 py-1.5 bg-gray-50 dark:bg-gray-900 rounded-full text-[10px] font-bold text-gray-400 border border-gray-100 dark:border-gray-800">
-                            Updates Daily
+                        
+                        <AnimatePresence>
+                            {isGoalSet && (
+                                <motion.div 
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="flex gap-3 overflow-hidden"
+                                >
+                                    <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl p-4 flex items-center justify-between shadow-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                        <span className="text-gray-400 text-sm">Add date</span>
+                                        <FiCalendar className="text-gray-400" />
+                                    </div>
+                                    <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl p-4 flex items-center justify-between shadow-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                        <span className="text-gray-400 text-sm">Add amount</span>
+                                        <FiChevronDown className="text-gray-400" />
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+
+                    {/* Repeat Days */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <label className="text-gray-600 dark:text-gray-400 text-sm font-medium ml-1">Repeat days</label>
+                            {/* <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" className="sr-only peer" />
+                                <div className="w-5 h-5 border-2 border-gray-300 rounded-md"></div>
+                            </label> */}
                         </div>
-                    </motion.div>
+                        <div className="flex justify-between items-center bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm">
+                            {DAYS.map((day) => {
+                                const isSelected = repeatDays.includes(day.value);
+                                return (
+                                    <button
+                                        key={day.value}
+                                        onClick={() => toggleDay(day.value)}
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                                            isSelected 
+                                            ? 'bg-gray-900 text-white dark:bg-white dark:text-black scale-105 shadow-md' 
+                                            : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}
+                                    >
+                                        {day.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Reminders */}
+                    <div className="flex items-center justify-between pt-2">
+                        <label className="text-gray-600 dark:text-white text-md font-medium ml-1">Get reminders</label>
+                         <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                checked={hasReminders}
+                                onChange={(e) => setHasReminders(e.target.checked)}
+                                className="sr-only peer" 
+                            />
+                            <div className="w-12 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-orange-500"></div>
+                        </label>
+                    </div>
+
                 </div>
+            </div>
 
+            {/* Footer Action */}
+            <div className="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-[#FDFBF7] via-[#FDFBF7] to-transparent dark:from-[#121212] dark:via-[#121212] z-20">
                 <button 
                     onClick={handleSave}
-                    className="w-full py-4 bg-gradient-to-r from-gray-900 to-black dark:from-white dark:to-gray-200 text-white dark:text-black rounded-[2rem] font-black text-base shadow-2xl shadow-gray-400/50 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    className="w-full bg-[#FA7C15] hover:bg-[#E66B0D] text-white font-bold text-lg py-4 rounded-[20px] shadow-lg shadow-orange-500/30 transition-all transform active:scale-95"
                 >
-                    Create Tracker
+                    Save Habit
                 </button>
-
+                <div className="h-1 w-32 bg-black/10 dark:bg-white/10 mx-auto rounded-full mt-6" />
             </div>
         </div>
     );

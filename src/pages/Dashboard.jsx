@@ -586,14 +586,14 @@ const Dashboard = () => {
                             });
 
                             relevantEvents.forEach((evt, idx) => {
-                                // Map Types to Visuals
+                                // Map Types to Visuals with SOLID COLORS for consistency and to prevent stack bleed-through
                                 const TYPE_MAP = {
-                                    'Birthday': { emoji: '🎂', bg: 'bg-gradient-to-br from-pink-100 to-rose-200 dark:from-pink-900/40 dark:to-rose-900/40', text: 'text-pink-600 dark:text-pink-100' },
-                                    'Anniversary': { emoji: '💍', bg: 'bg-gradient-to-br from-purple-100 to-indigo-200 dark:from-purple-900/40 dark:to-indigo-900/40', text: 'text-purple-600 dark:text-purple-100' },
-                                    'Meeting': { emoji: '🤝', bg: 'bg-gradient-to-br from-orange-100 to-amber-200 dark:from-orange-900/40 dark:to-amber-900/40', text: 'text-orange-600 dark:text-orange-100' },
-                                    'Remember': { emoji: '🎗️', bg: 'bg-gradient-to-br from-indigo-100 to-blue-200 dark:from-indigo-900/40 dark:to-blue-900/40', text: 'text-indigo-600 dark:text-indigo-100' },
-                                    'Design': { emoji: '🎨', bg: 'bg-gradient-to-br from-emerald-100 to-teal-200 dark:from-emerald-900/40 dark:to-teal-900/40', text: 'text-emerald-600 dark:text-emerald-100' },
-                                    'Custom': { emoji: '✨', bg: 'bg-gradient-to-br from-blue-100 to-sky-200 dark:from-blue-900/40 dark:to-sky-900/40', text: 'text-blue-600 dark:text-blue-100' }, 
+                                    'Birthday': { emoji: '🎂', bg: 'bg-[#FCE7F3] dark:bg-[#831843]', text: 'text-pink-600 dark:text-pink-100' },
+                                    'Anniversary': { emoji: '💍', bg: 'bg-[#F3E8FF] dark:bg-[#581C87]', text: 'text-purple-600 dark:text-purple-100' },
+                                    'Meeting': { emoji: '🤝', bg: 'bg-[#FFEDD5] dark:bg-[#7C2D12]', text: 'text-orange-600 dark:text-orange-100' },
+                                    'Remember': { emoji: '🎗️', bg: 'bg-[#E0E7FF] dark:bg-[#3730A3]', text: 'text-indigo-600 dark:text-indigo-100' },
+                                    'Design': { emoji: '🎨', bg: 'bg-[#D1FAE5] dark:bg-[#064E3B]', text: 'text-emerald-600 dark:text-emerald-100' },
+                                    'Custom': { emoji: '✨', bg: 'bg-[#E0F2FE] dark:bg-[#0C4A6E]', text: 'text-blue-600 dark:text-blue-100' }, 
                                 };
 
                                 const style = TYPE_MAP[evt.type] || TYPE_MAP['Custom'];
