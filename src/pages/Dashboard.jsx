@@ -34,7 +34,10 @@ import {
   FiBell,
   FiChevronRight,
   FiCalendar,
-  FiHelpCircle
+  FiHelpCircle,
+  FiCheckCircle,
+  FiCheck,
+  FiClock
 } from 'react-icons/fi';
 import { collection, query, where, getDocs, doc, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -572,51 +575,25 @@ const Dashboard = () => {
                         const dayName = format(parseISO(selectedDate), 'EEE');
                         const monthDay = format(parseISO(selectedDate), 'MM-dd');
 
-                        // 1. PROMPT (High Priority - If NOT logged & Today)
-                        if (!activeLog && isDayToday) {
-                            stack.push({
-                                id: 'prompt',
-                                type: 'prompt',
-                                bg: 'bg-[#FFD55F] dark:bg-amber-600',
-                                zIndex: 50
-                            });
-                        }
-
-                        // 1.5 MISSED (High Priority - If NOT logged & Past)
-                        const isFutureDate = isFuture(parseISO(selectedDate));
-                        const isMissed = !activeLog && !isDayToday && !isFutureDate;
-                        if (isMissed) {
-                            stack.push({
-                                id: 'missed',
-                                type: 'missed',
-                                bg: isDarkMode ? 'bg-red-900/20' : 'bg-red-50',
-                                zIndex: 50
-                            });
-                        }
-
-                        // 1.6 FUTURE (High Priority - If Future)
-                        if (isFutureDate) {
-                             stack.push({
-                                id: 'future',
-                                type: 'future',
-                                bg: isDarkMode ? 'bg-indigo-900/20' : 'bg-indigo-50',
-                                zIndex: 50
-                            });
-                        }
-
-                        // 2. IMPORTANT EVENTS (Birthday / Holidays / Weekend)
+                        // 1. IMPORTANT EVENTS (Birthday / Holidays / Weekend)
                         if (importantDates && importantDates.length > 0) {
-                            const events = importantDates.filter(d => d.date && format(parseISO(d.date), 'MM-dd') === monthDay);
+                            // Check for events in the next 3 days
+                            const relevantEvents = importantDates.filter(d => {
+                                if (!d.date) return false;
+                                const date = parseISO(d.date);
+                                // Show exact match
+                                return format(date, 'MM-dd') === monthDay;
+                            });
 
-                            events.forEach((evt, idx) => {
+                            relevantEvents.forEach((evt, idx) => {
                                 // Map Types to Visuals
                                 const TYPE_MAP = {
-                                    'Birthday': { emoji: '🎂', bg: 'bg-pink-100 dark:bg-pink-900/40', text: 'text-pink-600 dark:text-pink-400' },
-                                    'Anniversary': { emoji: '💍', bg: 'bg-purple-100 dark:bg-purple-900/40', text: 'text-purple-600 dark:text-purple-400' },
-                                    'Meeting': { emoji: '🤝', bg: 'bg-orange-100 dark:bg-orange-900/40', text: 'text-orange-600 dark:text-orange-400' },
-                                    'Remember': { emoji: '🎗️', bg: 'bg-indigo-100 dark:bg-indigo-900/40', text: 'text-indigo-600 dark:text-indigo-400' },
-                                    'Design': { emoji: '🎨', bg: 'bg-emerald-100 dark:bg-emerald-900/40', text: 'text-emerald-600 dark:text-emerald-400' },
-                                    'Custom': { emoji: '✨', bg: 'bg-blue-100 dark:bg-blue-900/40', text: 'text-blue-600 dark:text-blue-400' }, 
+                                    'Birthday': { emoji: '🎂', bg: 'bg-gradient-to-br from-pink-100 to-rose-200 dark:from-pink-900/40 dark:to-rose-900/40', text: 'text-pink-600 dark:text-pink-100' },
+                                    'Anniversary': { emoji: '💍', bg: 'bg-gradient-to-br from-purple-100 to-indigo-200 dark:from-purple-900/40 dark:to-indigo-900/40', text: 'text-purple-600 dark:text-purple-100' },
+                                    'Meeting': { emoji: '🤝', bg: 'bg-gradient-to-br from-orange-100 to-amber-200 dark:from-orange-900/40 dark:to-amber-900/40', text: 'text-orange-600 dark:text-orange-100' },
+                                    'Remember': { emoji: '🎗️', bg: 'bg-gradient-to-br from-indigo-100 to-blue-200 dark:from-indigo-900/40 dark:to-blue-900/40', text: 'text-indigo-600 dark:text-indigo-100' },
+                                    'Design': { emoji: '🎨', bg: 'bg-gradient-to-br from-emerald-100 to-teal-200 dark:from-emerald-900/40 dark:to-teal-900/40', text: 'text-emerald-600 dark:text-emerald-100' },
+                                    'Custom': { emoji: '✨', bg: 'bg-gradient-to-br from-blue-100 to-sky-200 dark:from-blue-900/40 dark:to-sky-900/40', text: 'text-blue-600 dark:text-blue-100' }, 
                                 };
 
                                 const style = TYPE_MAP[evt.type] || TYPE_MAP['Custom'];
@@ -624,42 +601,80 @@ const Dashboard = () => {
                                 stack.push({
                                     id: `event-${evt.id || idx}`,
                                     type: 'event',
-                                    title: `${evt.text} ${style.emoji}`,
+                                    title: `${evt.text}`,
                                     desc: evt.description || 'Don\'t forget for this special day!',
+                                    icon: style.emoji,
                                     bg: style.bg,
                                     accent: style.text,
-                                    zIndex: 60 + idx // Higher priority than prompt(50)
+                                    zIndex: 60 + idx
                                 });
                             });
                         }
 
-                        // 3. LOGGED STATS (If Logged)
-                        if (activeLog) {
+                        // 2. JOURNAL STATE
+                        const isFutureDate = isFuture(parseISO(selectedDate));
+                        
+                        if (isFutureDate) {
+                             stack.push({
+                                id: 'future',
+                                type: 'future',
+                                bg: isDarkMode ? 'bg-indigo-900/20' : 'bg-indigo-50',
+                                zIndex: 45
+                            });
+                        } else if (!activeLog) {
+                             if (isDayToday) {
+                                 // Today Prompt
+                                 stack.push({
+                                    id: 'prompt',
+                                    type: 'prompt',
+                                    bg: 'bg-[#FFD55F] dark:bg-amber-600',
+                                    zIndex: 50
+                                });
+                             } else {
+                                 // Missed Log
+                                 stack.push({
+                                    id: 'missed',
+                                    type: 'missed',
+                                    bg: isDarkMode ? 'bg-red-900/20' : 'bg-red-50',
+                                    zIndex: 45
+                                });
+                             }
+                        } else {
+                            // Log Exists -> Daily Summary
                             stack.push({
                                 id: 'stats',
                                 type: 'stats',
                                 data: activeLog,
-                                zIndex: 20
+                                zIndex: 40
                             });
+                            
+                            // Habit Tracker (if logged)
+                            if (activeLog.habits && activeLog.habits.length > 0) {
+                                 stack.push({
+                                    id: 'habits',
+                                    type: 'habits',
+                                    data: activeLog.habits,
+                                    zIndex: 35
+                                });
+                            }
                         }
 
-                         // 4. SHOPPING / TASKS
+                        // 3. SHOPPING
                         if (activeLog?.shopping && activeLog?.shoppingData?.item) {
                             stack.push({
                                 id: 'shopping',
                                 type: 'shopping',
                                 data: activeLog.shoppingData,
-                                zIndex: 10
+                                zIndex: 20
                             });
                         }
-
-                        // 5. QUICK NOTE (Fallback or if note exists)
-                        if (activeLog?.shortNote || (!activeLog && !isDayToday)) {
+                        
+                        // 4. FILLER QUOTE (If stack < 2 and not future)
+                        if (stack.length < 2 && !isFutureDate) {
                              stack.push({
-                                id: 'note',
-                                type: 'note',
-                                text: activeLog?.shortNote || "No logs for this day.",
-                                zIndex: 5
+                                id: 'quote',
+                                type: 'quote',
+                                zIndex: 10
                             });
                         }
 
@@ -878,17 +893,73 @@ const Dashboard = () => {
                                 );
                             } else if (card.type === 'event') {
                                 content = (
-                                    <div className={`${card.bg} ${baseStyle} p-8 flex flex-col justify-center text-gray-800 dark:text-gray-100`}>
-                                         <div className="absolute top-0 right-0 p-8 opacity-10 scale-150">
-                                            {card.icon || <FiStar size={100}/>}
-                                         </div>
+                                    <div className={`${card.bg} ${baseStyle} p-8 flex flex-col justify-center text-white relative overflow-hidden`}>
+                                         {/* Decorative Circle */}
+                                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+                                         <div className="absolute bottom-10 -left-10 w-32 h-32 bg-black/5 rounded-full blur-xl"></div>
+                                         
                                          <div className="relative z-10">
-                                             <div className={`p-3 rounded-2xl w-fit mb-4 bg-white dark:bg-gray-800 shadow-sm ${card.accent}`}>
-                                                {card.icon || <FiStar size={24} />}
+                                             <div className="flex justify-between items-start mb-6">
+                                                <div className={`p-4 rounded-2xl bg-white/20 backdrop-blur-md shadow-lg`}>
+                                                    {card.icon || <FiStar size={28} className="text-white" />}
+                                                </div>
+                                                <span className="text-xs font-bold uppercase tracking-widest opacity-80 bg-black/10 px-3 py-1 rounded-full">Important</span>
                                              </div>
-                                             <h3 className="text-3xl font-black mb-2">{card.title}</h3>
-                                             <p className="text-lg opacity-80 font-medium">{card.desc}</p>
+                                             
+                                             <h3 className="text-4xl font-black mb-3 leading-tight drop-shadow-sm">{card.title}</h3>
+                                             <p className="text-lg opacity-90 font-medium leading-relaxed">{card.desc}</p>
+                                             
+                                             <div className="mt-8 flex items-center gap-2 opacity-75">
+                                                 <FiClock size={16} />
+                                                 <span className="text-sm font-bold">All Day Event</span>
+                                             </div>
                                          </div>
+                                    </div>
+                                );
+                            } else if (card.type === 'habits') {
+                                content = (
+                                    <div className={`bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-100 dark:border-emerald-800/30 ${baseStyle} p-6 flex flex-col`}>
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                                <FiCheckCircle size={20} />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-xl text-emerald-900 dark:text-emerald-100 leading-none">Habits Tracked</h3>
+                                                <span className="text-xs font-semibold text-emerald-600/70 dark:text-emerald-400/70 uppercase tracking-wider">Today's Wins</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex-1 overflow-y-auto no-scrollbar space-y-2">
+                                            {card.data.map((habit, idx) => (
+                                                <div key={idx} className="flex items-center gap-3 bg-white/60 dark:bg-black/20 p-3 rounded-xl border border-emerald-100/50 dark:border-emerald-500/10">
+                                                    <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-sm shadow-emerald-200 dark:shadow-none">
+                                                        <FiCheck size={14} strokeWidth={3} />
+                                                    </div>
+                                                    <span className="font-medium text-gray-700 dark:text-gray-200">{typeof habit === 'string' ? habit : habit.name || 'Habit'}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        
+                                        <div className="mt-4 pt-4 border-t border-emerald-100 dark:border-emerald-800/30 text-center">
+                                            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                                                Keeping the streak alive! 🔥
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            } else if (card.type === 'quote') {
+                                content = (
+                                    <div className={`bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 ${baseStyle} p-8 flex flex-col justify-center items-center text-center`}>
+                                        <span className="text-6xl text-gray-200 dark:text-gray-700 font-serif absolute top-6 left-6">"</span>
+                                        <div className="relative z-10 max-w-[90%]">
+                                            <h3 className="text-2xl md:text-3xl font-serif italic text-gray-800 dark:text-gray-100 leading-relaxed mb-6">
+                                                Every day may not be good, but there is something good in every day.
+                                            </h3>
+                                            <div className="w-12 h-1 bg-gray-200 dark:bg-gray-700 mx-auto rounded-full"></div>
+                                        </div>
+                                        <div className="absolute bottom-6 right-6 text-xs font-bold uppercase tracking-widest text-gray-400">
+                                            Daily Inspiration
+                                        </div>
                                     </div>
                                 );
                             } else if (card.type === 'stats') {

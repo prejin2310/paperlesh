@@ -3,11 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { db } from '../lib/firebase';
 import { doc, setDoc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
-import { FiCalendar, FiSave, FiArrowLeft, FiTrash2, FiEdit2, FiCheckSquare, FiType, FiRefreshCw, FiPlus, FiSmile, FiActivity, FiMoon, FiDollarSign, FiStar, FiMoreHorizontal, FiGrid, FiChevronDown, FiX } from 'react-icons/fi';
+import { FiCalendar, FiSave, FiArrowLeft, FiTrash2, FiEdit2, FiCheckSquare, FiType, FiRefreshCw, FiPlus, FiSmile, FiActivity, FiMoon, FiDollarSign, FiStar, FiMoreHorizontal, FiGrid, FiChevronDown, FiX, FiDroplet, FiSun, FiWind } from 'react-icons/fi';
 import MonthlyJournalBlock from '../components/feature/MonthlyJournalBlock';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, getDaysInMonth, differenceInDays, eachMonthOfInterval, startOfYear, endOfYear, setMonth, getWeek } from 'date-fns';
-import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid, BarChart, Bar, LineChart, Line, Legend } from 'recharts';
 import debounce from 'lodash.debounce';
 
 const DEFAULT_BLOCKS = [
@@ -20,17 +20,17 @@ const DEFAULT_BLOCKS = [
 ];
 
 const StatCard = ({ title, value, sub, icon, bgClass, textClass, onClick, isDarkMode }) => (
-    <div onClick={onClick} className={`p-6 rounded-[2rem] flex flex-col justify-between min-h-[160px] relative overflow-hidden group cursor-pointer transition-all ${isDarkMode ? 'bg-[#1C1C1E] hover:bg-gray-800' : 'bg-white hover:bg-gray-50'} shadow-sm`}>
+    <div onClick={onClick} className={`p-6 rounded-[2rem] flex flex-col justify-between min-h-[160px] relative overflow-hidden group cursor-pointer transition-all ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-50'} shadow-sm`}>
         <div className="flex justify-between items-start z-10">
-            <div className={`p-3 rounded-2xl ${bgClass} bg-opacity-20 ${textClass}`}>
+            <div className={`p-3 rounded-2xl ${bgClass} ${isDarkMode ? 'bg-opacity-20' : 'bg-opacity-50'} ${textClass}`}>
                 {icon}
             </div>
-            <FiArrowLeft className={`rotate-180 opacity-0 group-hover:opacity-100 transition-opacity ${textClass}`} />
+            {/* Arrow removed for cleaner look, can add back if needed */}
         </div>
         <div className="z-10 mt-4">
-            <h3 className="text-3xl font-black tracking-tight">{value}</h3>
-            <p className="text-xs font-bold uppercase tracking-wider opacity-60 mt-1">{title}</p>
-            {sub && <p className="text-[10px] mt-2 opacity-40 font-medium">{sub}</p>}
+            <h3 className={`text-3xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{value}</h3>
+            <p className={`text-xs font-bold uppercase tracking-wider mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{title}</p>
+            {sub && <p className={`text-[10px] mt-2 font-medium ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{sub}</p>}
         </div>
         {/* Decorative Blob */}
         <div className={`absolute -bottom-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity ${textClass.replace('text', 'bg')}`} />
@@ -190,10 +190,32 @@ const Month = () => {
       const heaviestSpendWeek = weeks.length ? weeks.reduce((a, b) => weeklyData[a].spend > weeklyData[b].spend ? a : b, weeks[0]) : null;
       const activeStepWeek = weeks.length ? weeks.reduce((a, b) => weeklyData[a].steps > weeklyData[b].steps ? a : b, weeks[0]) : null;
       
+      // Water
+      const waterSum = logs.reduce((acc, log) => acc + (Number(log.water) || 0), 0);
+      const waterAvg = totalDays ? (waterSum / totalDays).toFixed(1) : 0;
+
+      // Habits
+      const habitsSum = logs.reduce((acc, log) => acc + (log.habits?.length || 0), 0);
+      const habitsAvg = totalDays ? (habitsSum / totalDays).toFixed(1) : 0;
+
+      // Weather
+      const weatherCounts = {};
+      logs.forEach(log => {
+          if (log.weather && Array.isArray(log.weather)) {
+              log.weather.forEach(w => {
+                  weatherCounts[w] = (weatherCounts[w] || 0) + 1;
+              });
+          }
+      });
+      const topWeather = Object.entries(weatherCounts).sort((a,b) => b[1] - a[1]);
+
       const chartData = logs.map(l => ({
           day: format(new Date(l.date), 'd'),
           mood: l.mood !== undefined ? 8 - l.mood : 0, 
-          rating: l.rating || 0
+          rating: l.rating || 0,
+          sleep: Number(l.sleep) || 0,
+          water: Number(l.water) || 0,
+          habits: l.habits?.length || 0
       }));
 
       return { 
@@ -202,6 +224,9 @@ const Month = () => {
           sleepAvg, 
           totalSpend, highSpendDays, 
           stepsAvg, maxSteps, stepsSum,
+          waterAvg, waterSum,
+          habitsAvg,
+          topWeather,
           chartData, totalDays, completionPercentage, maxStreak,
           weeklyInsights: {
               heaviestSpendWeek: heaviestSpendWeek ? { week: heaviestSpendWeek, amount: weeklyData[heaviestSpendWeek].spend } : null,
@@ -447,49 +472,210 @@ const Month = () => {
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
         exit={{ opacity: 0 }}
-        className="relative z-10 max-w-2xl mx-auto pb-32 pt-6"
+        className="relative z-10 max-w-4xl mx-auto pb-32 pt-6"
       >
         {/* 1. Header & Summary */}
-        <div className="mb-10">
-             <div className="flex items-center justify-between mb-6">
-                 <button onClick={() => setSelectedDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))} className="p-3 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"><FiArrowLeft/></button>
+        <div className="mb-8">
+             <div className="flex items-center justify-between mb-8">
+                 <button onClick={() => setSelectedDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))} className={`p-3 rounded-full transition-colors ${isDarkMode ? 'hover:bg-gray-800 text-white' : 'hover:bg-black/5 text-gray-900'}`}><FiArrowLeft/></button>
                  
                  <div className="flex flex-col items-center">
-                     <div className="flex items-center gap-2 cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 px-4 py-2 rounded-2xl transition-all" onClick={() => setShowYearView(true)}>
-                        <h2 className={`text-xl font-bold font-serif ${isDarkMode ? 'text-gray-100' : 'text-[#2D2D2D]'}`}>{displayMonth}</h2>
+                     <div className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-2xl transition-all ${isDarkMode ? 'hover:bg-gray-800 text-white' : 'hover:bg-black/5 text-gray-900'}`} onClick={() => setShowYearView(true)}>
+                        <h2 className="text-2xl font-bold font-serif">{displayMonth}</h2>
                         <FiGrid size={16} className="opacity-40" />
                      </div>
-                     <p className="text-xs font-bold uppercase tracking-widest text-[#B0B0B0] mt-1">Monthly Review</p>
+                     <p className={`text-xs font-bold uppercase tracking-widest mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Monthly Analytics</p>
                  </div>
 
-                 <button onClick={() => setSelectedDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))} disabled={endOfMonth(selectedDate) >= new Date()} className="p-3 hover:bg-black/5 dark:hover:bg-white/10 rounded-full disabled:opacity-30 transition-colors"><FiArrowLeft className="rotate-180"/></button>
+                 <button onClick={() => setSelectedDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))} disabled={endOfMonth(selectedDate) >= new Date()} className={`p-3 rounded-full disabled:opacity-30 transition-colors ${isDarkMode ? 'hover:bg-gray-800 text-white' : 'hover:bg-black/5 text-gray-900'}`}><FiArrowLeft className="rotate-180"/></button>
              </div>
 
-             <div className="flex justify-between items-center px-4 md:px-12">
-                 <div className="text-center">
-                     <span className="block text-2xl font-black">{analytics?.totalDays}</span>
-                     <span className="text-[10px] font-bold uppercase tracking-wider opacity-40">Days Logged</span>
+             {/* Overview Stats Row */}
+             <div className="grid grid-cols-3 gap-4 mb-8">
+                 <div className={`text-center p-6 rounded-3xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                     <span className={`block text-3xl font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{analytics?.totalDays}</span>
+                     <span className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`}>Days Logged</span>
                  </div>
-                 <div className="text-center">
-                     <span className="block text-2xl font-black">{analytics?.completionPercentage}%</span>
-                     <span className="text-[10px] font-bold uppercase tracking-wider opacity-40">Complete</span>
+                 <div className={`text-center p-6 rounded-3xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                     <span className={`block text-3xl font-black ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{analytics?.completionPercentage}%</span>
+                     <span className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`}>Completeness</span>
                  </div>
-                 <div className="text-center">
-                     <span className="block text-2xl font-black">{analytics?.maxStreak}</span>
-                     <span className="text-[10px] font-bold uppercase tracking-wider opacity-40">Best Streak</span>
+                 <div className={`text-center p-6 rounded-3xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                     <span className={`block text-3xl font-black ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`}>{analytics?.maxStreak}</span>
+                     <span className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`}>Max Streak</span>
                  </div>
              </div>
         </div>
 
-        {/* 2. Visual Calendar */}
-        <div className={`mb-10 p-6 rounded-[2.5rem] ${isDarkMode ? 'bg-[#1C1C1E]' : 'bg-white'} shadow-sm`}>
-            <div className="flex justify-between items-center mb-6 relative z-30">
+        {/* 2. Charts Section - Mood & Rating */}
+        <div className={`mb-8 p-6 rounded-[2.5rem] ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+            <div className="flex justify-between items-center mb-6 pl-2">
+                <h3 className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Mood & Energy Flow</h3>
+                <div className="flex gap-2">
+                     <span className="flex items-center text-[10px] font-bold uppercase gap-1 text-purple-500"><div className="w-2 h-2 rounded-full bg-purple-500"/> Mood</span>
+                     <span className="flex items-center text-[10px] font-bold uppercase gap-1 text-amber-500"><div className="w-2 h-2 rounded-full bg-amber-500"/> Rating</span>
+                </div>
+            </div>
+            <div className="h-[200px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={analytics?.chartData}>
+                        <defs>
+                            <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                            </linearGradient>
+                            <linearGradient id="colorRating" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? '#374151' : '#f3f4f6'} />
+                        <XAxis 
+                            dataKey="day" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{fontSize: 10, fill: isDarkMode ? '#9ca3af' : '#9ca3af'}} 
+                            dy={10}
+                        />
+                         <Tooltip 
+                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: isDarkMode ? '#1f2937' : '#fff' }}
+                            itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                            labelStyle={{ color: isDarkMode ? '#9ca3af' : '#6b7280', marginBottom: '0.25rem' }}
+                        />
+                        <Area type="monotone" dataKey="mood" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorMood)" />
+                        <Area type="monotone" dataKey="rating" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorRating)" />
+                    </AreaChart>
+                </ResponsiveContainer>
+            </div>
+             <div className="grid grid-cols-2 gap-4 mt-4">
+                 <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-gray-700/30' : 'bg-purple-50'}`}>
+                     <div className="text-xs text-purple-500 uppercase font-bold mb-1">Avg Mood</div>
+                     <div className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{analytics?.moodAvg <= 0 ? 'N/A' : analytics?.moodAvg}</div>
+                 </div>
+                 <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-gray-700/30' : 'bg-amber-50'}`}>
+                     <div className="text-xs text-amber-500 uppercase font-bold mb-1">Avg Rating</div>
+                     <div className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{analytics?.ratingAvg}</div>
+                 </div>
+             </div>
+        </div>
+
+        {/* 3. Sleep Analysis */}
+        <div className={`mb-8 p-6 rounded-[2.5rem] ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+            <div className="flex justify-between items-center mb-6 pl-2">
+                 <div className="flex items-center gap-2">
+                     <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-indigo-900/40 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>
+                        <FiMoon size={20} />
+                     </div>
+                     <h3 className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Sleep Quality</h3>
+                 </div>
+                  <div className={`text-2xl font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{analytics?.sleepAvg}<span className="text-sm font-normal text-gray-500 ml-1">hrs/avg</span></div>
+            </div>
+            <div className="h-[150px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={analytics?.chartData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? '#374151' : '#f3f4f6'} />
+                        <XAxis dataKey="day" hide />
+                        <Tooltip 
+                           contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: isDarkMode ? '#1f2937' : '#fff' }}
+                        />
+                        <Line type="monotone" dataKey="sleep" stroke="#6366f1" strokeWidth={3} dot={{r: 3, fill:'#6366f1'}} activeDot={{r: 5}} />
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+
+        {/* 4. Habits, Water & Weather Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+            {/* Habits */}
+            <div className={`p-6 rounded-[2.5rem] ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+                <div className="flex justify-between items-center mb-4 pl-2">
+                     <div className="flex items-center gap-2">
+                         <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-100 text-emerald-600'}`}>
+                            <FiCheckSquare size={20} />
+                         </div>
+                         <h3 className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Habits</h3>
+                     </div>
+                </div>
+                 <div className="mb-4">
+                     <div className={`text-3xl font-black ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{analytics?.habitsAvg}</div>
+                     <div className={`text-xs font-bold uppercase ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Avg per day</div>
+                 </div>
+                <div className="h-[100px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={analytics?.chartData}>
+                            <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: isDarkMode ? '#1f2937' : '#fff' }}/>
+                            <Bar dataKey="habits" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            {/* Water */}
+            <div className={`p-6 rounded-[2.5rem] ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+                 <div className="flex justify-between items-center mb-4 pl-2">
+                     <div className="flex items-center gap-2">
+                         <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-blue-900/40 text-blue-400' : 'bg-blue-100 text-blue-600'}`}>
+                            <FiDroplet size={20} />
+                         </div>
+                         <h3 className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Hydration</h3>
+                     </div>
+                </div>
+                <div className="mb-4">
+                     <div className={`text-3xl font-black ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{analytics?.waterAvg}</div>
+                     <div className={`text-xs font-bold uppercase ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Avg glasses / day</div>
+                 </div>
+                <div className="h-[100px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={analytics?.chartData}>
+                             <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: isDarkMode ? '#1f2937' : '#fff' }}/>
+                            <Bar dataKey="water" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            {/* Weather Widget */}
+             <div className={`p-6 rounded-[2.5rem] ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+                 <div className="flex justify-between items-center mb-4 pl-2">
+                     <div className="flex items-center gap-2">
+                         <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-600'}`}>
+                            <FiSun size={20} />
+                         </div>
+                         <h3 className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Weather</h3>
+                     </div>
+                </div>
+                 <div className="mb-4">
+                     <div className={`text-xl font-black truncate ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+                         {analytics?.topWeather?.[0]?.[0] || 'N/A'}
+                     </div>
+                     <div className={`text-xs font-bold uppercase ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Most frequent</div>
+                 </div>
+                 <div className="flex flex-col gap-3 mt-4">
+                    {analytics?.topWeather?.slice(0, 3).map(([type, count], i) => (
+                        <div key={type} className="relative">
+                            <div className="flex items-center justify-between text-xs font-bold relative z-10">
+                                <span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>{type}</span>
+                                <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>{count} days</span>
+                            </div>
+                            <div className="absolute inset-y-0 left-0 bg-amber-200/20 dark:bg-amber-500/10 rounded-r-full" style={{width: `${(count / analytics.totalDays) * 100}%`}}></div>
+                        </div>
+                    ))}
+                    {(!analytics?.topWeather || analytics?.topWeather.length === 0) && (
+                        <div className="text-xs text-center opacity-50 py-4">No data</div>
+                    )}
+                </div>
+            </div>
+        </div>
+
+        {/* 5. Visual Calendar (Heatmap Style) */}
+        <div className={`mb-8 p-6 rounded-[2.5rem] ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
+            <div className="flex justify-between items-center mb-6 pl-2">
                 <div className="relative">
                     <button 
                         onClick={() => setIsMetricMenuOpen(!isMetricMenuOpen)}
-                        className="flex items-center gap-2 font-bold text-sm uppercase tracking-wider opacity-60 hover:opacity-100 transition-opacity"
+                        className={`flex items-center gap-2 font-bold text-sm uppercase tracking-wider opacity-80 hover:opacity-100 transition-opacity ${isDarkMode ? 'text-white' : 'text-gray-900'}`}
                     >
-                        {calendarMetric.charAt(0).toUpperCase() + calendarMetric.slice(1)} Calendar
+                        {calendarMetric.charAt(0).toUpperCase() + calendarMetric.slice(1)} Heatmap
                         <FiChevronDown className={`transition-transform ${isMetricMenuOpen ? 'rotate-180' : ''}`}/>
                     </button>
                     
@@ -499,7 +685,7 @@ const Month = () => {
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: 10 }}
-                                className="absolute top-full left-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden z-50 border border-gray-100 dark:border-gray-700"
+                                className={`absolute top-full left-0 mt-2 w-40 rounded-2xl shadow-xl overflow-hidden z-50 border ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-100 text-gray-900'}`}
                             >
                                 {['rating', 'mood', 'sleep', 'steps', 'spend'].map(m => (
                                     <button 
@@ -508,7 +694,11 @@ const Month = () => {
                                             setCalendarMetric(m);
                                             setIsMetricMenuOpen(false);
                                         }}
-                                        className={`w-full text-left px-4 py-3 text-xs font-bold uppercase transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${calendarMetric === m ? 'text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : ''}`}
+                                        className={`w-full text-left px-4 py-3 text-xs font-bold uppercase transition-colors ${
+                                            calendarMetric === m 
+                                            ? (isDarkMode ? 'bg-indigo-900/50 text-indigo-300' : 'bg-indigo-50 text-indigo-600') 
+                                            : (isDarkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-50')
+                                        }`}
                                     >
                                         {m}
                                     </button>
@@ -518,13 +708,16 @@ const Month = () => {
                     </AnimatePresence>
                 </div>
             </div>
+            
             {renderMonthCalendar()}
             
-            {/* Dynamic Legend (Moved Below) */}
-            <div className="flex flex-wrap justify-center gap-3 mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+            {/* Legend */}
+            <div className={`flex flex-wrap justify-center gap-4 mt-8 pt-6 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
                 {(() => {
                     let items = [];
-                    if (calendarMetric === 'spend') {
+                    // ... (Keep existing legend logic or simplify) ...
+                    // Reusing the logic from render function to ensure consistency, but adapting styles
+                     if (calendarMetric === 'spend') {
                         items = [
                             { color: 'bg-emerald-100 dark:bg-emerald-900', label: '0' },
                             { color: 'bg-emerald-300', label: '<500' },
@@ -534,7 +727,7 @@ const Month = () => {
                             { color: 'bg-red-500', label: '>5k' },
                         ];
                     } else if (calendarMetric === 'rating') {
-                        items = [
+                         items = [
                             { color: 'bg-red-400', label: '1' },
                             { color: 'bg-orange-400', label: '2' },
                             { color: 'bg-yellow-400', label: '3' },
@@ -542,15 +735,15 @@ const Month = () => {
                             { color: 'bg-emerald-400', label: '5' },
                         ];
                     } else if (calendarMetric === 'mood') {
-                        items = [
-                            { color: 'bg-purple-900', label: 'Low' },
-                            { color: 'bg-purple-400', label: 'Neu' },
-                            { color: 'bg-pink-400', label: 'High' },
+                         items = [
+                            { color: 'bg-purple-900', label: 'Sad' },
+                            { color: 'bg-purple-400', label: 'Neutral' },
+                            { color: 'bg-pink-400', label: 'Happy' },
                         ];
                     } else if (calendarMetric === 'sleep') {
                         items = [
                             { color: 'bg-indigo-900', label: '<5h' },
-                            { color: 'bg-indigo-300', label: '5-7h' },
+                            { color: 'bg-indigo-300', label: '6h' },
                             { color: 'bg-indigo-400', label: '8h+' },
                         ];
                     } else if (calendarMetric === 'steps') {
@@ -562,173 +755,43 @@ const Month = () => {
                     }
 
                     return items.map((item, i) => (
-                        <div key={i} className="flex items-center gap-1.5">
-                            <div className={`w-2.5 h-2.5 rounded-full ${item.color}`}></div>
-                            <span className="text-[10px] font-bold opacity-50 uppercase tracking-wide">{item.label}</span>
+                        <div key={i} className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
+                            <span className={`text-[10px] font-bold uppercase tracking-wide ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{item.label}</span>
                         </div>
                     ));
                 })()}
             </div>
         </div>
 
-        {/* Metric Highlight Card */}
-        <div className="mb-10 px-2">
-             {calendarMetric === 'spend' && (
-                 <div className="flex gap-4">
-                     <div className="flex-1 p-6 rounded-[2rem] bg-emerald-50 dark:bg-emerald-900/10 flex flex-col justify-between">
-                         <div>
-                             <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 opacity-60">Total Month Spend</p>
-                             <h3 className="text-2xl font-black text-emerald-800 dark:text-emerald-300 mt-2">
-                                 {analytics?.totalSpend > 0 ? `₹${(analytics.totalSpend/1000).toFixed(1)}k` : '₹0'}
-                             </h3>
-                         </div>
-                     </div>
-                     <div className="flex-1 p-6 rounded-[2rem] bg-orange-50 dark:bg-orange-900/10 flex flex-col justify-between">
-                         <div>
-                             <p className="text-xs font-bold uppercase tracking-widest text-orange-600 dark:text-orange-400 opacity-60">Highest Week</p>
-                             <h3 className="text-xl font-black text-orange-800 dark:text-orange-300 mt-2">
-                                 Week {analytics?.weeklyInsights?.heaviestSpendWeek?.week || '-'}
-                             </h3>
-                             <p className="text-xs font-bold opacity-40 mt-1">
-                                 {analytics?.weeklyInsights?.heaviestSpendWeek ? `₹${(analytics.weeklyInsights.heaviestSpendWeek.amount/1000).toFixed(1)}k` : '-'}
-                             </p>
-                         </div>
-                     </div>
-                 </div>
-             )}
-
-             {calendarMetric === 'steps' && (
-                  <div className="flex gap-4">
-                     <div className="flex-1 p-6 rounded-[2rem] bg-rose-50 dark:bg-rose-900/10 flex flex-col justify-between">
-                         <div>
-                             <p className="text-xs font-bold uppercase tracking-widest text-rose-600 dark:text-rose-400 opacity-60">Total Steps</p>
-                             <h3 className="text-2xl font-black text-rose-800 dark:text-rose-300 mt-2">
-                                 {analytics?.stepsSum > 0 ? `${(analytics.stepsSum/1000).toFixed(0)}k` : '0'}
-                             </h3>
-                         </div>
-                     </div>
-                     <div className="flex-1 p-6 rounded-[2rem] bg-blue-50 dark:bg-blue-900/10 flex flex-col justify-between">
-                         <div>
-                             <p className="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 opacity-60">Most Active Week</p>
-                              <h3 className="text-xl font-black text-blue-800 dark:text-blue-300 mt-2">
-                                 Week {analytics?.weeklyInsights?.activeStepWeek?.week || '-'}
-                             </h3>
-                             <p className="text-xs font-bold opacity-40 mt-1">
-                                 {analytics?.weeklyInsights?.activeStepWeek ? `${(analytics.weeklyInsights.activeStepWeek.steps/1000).toFixed(1)}k steps` : '-'}
-                             </p>
-                         </div>
-                     </div>
-                 </div>
-             )}
-             
-             {(calendarMetric === 'mood' || calendarMetric === 'rating' || calendarMetric === 'sleep') && (
-                  <div className="p-6 rounded-[2rem] bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between">
-                      <div>
-                          <p className="text-xs font-bold uppercase tracking-widest opacity-40">Monthly Average</p>
-                          <h3 className="text-2xl font-black mt-1">
-                              {calendarMetric === 'mood' && analytics?.moodAvg}
-                              {calendarMetric === 'rating' && analytics?.ratingAvg}
-                              {calendarMetric === 'sleep' && analytics?.sleepAvg + 'h'}
-                          </h3>
-                      </div>
-                      <div className="text-right">
-                          <p className="text-xs font-bold uppercase tracking-widest opacity-40">Best Day</p>
-                           <h3 className="text-xl font-black mt-1">
-                              {calendarMetric === 'mood' && (analytics?.mostFrequentMood > 3 ? 'Happy' : 'Normal')}
-                              {calendarMetric === 'rating' && analytics?.bestRating}
-                              {calendarMetric === 'sleep' && '>8h'}
-                          </h3>
-                      </div>
-                  </div>
-             )}
-        </div>
-
-        {/* 3. Stat Cards Grid */}
-        <div className="grid grid-cols-2 gap-4 mb-10">
-            <StatCard 
-                title="Avg Rating" 
-                value={analytics?.ratingAvg} 
-                sub={`Best: ${analytics?.bestRating} / Worst: ${analytics?.worstRating}`}
-                icon={<FiStar size={20}/>}
-                bgClass="bg-orange-100 dark:bg-orange-900/40"
-                textClass="text-orange-600 dark:text-orange-400"
-                isDarkMode={isDarkMode}
-            />
-            <StatCard 
-                title="Mood Flow" 
-                value={analytics?.mostFrequentMood === '3' ? 'Neutral' : (analytics?.mostFrequentMood > 3 ? 'Happy' : 'Low')} 
-                sub="Most frequent mood"
-                icon={<FiSmile size={20}/>}
-                bgClass="bg-yellow-100 dark:bg-yellow-900/40"
-                textClass="text-yellow-600 dark:text-yellow-400"
-                isDarkMode={isDarkMode}
-            />
-            <StatCard 
-                title="Avg Sleep" 
-                value={`${analytics?.sleepAvg}h`} 
-                sub="Daily Average"
-                icon={<FiMoon size={20}/>}
-                bgClass="bg-indigo-100 dark:bg-indigo-900/40"
-                textClass="text-indigo-600 dark:text-indigo-400"
-                isDarkMode={isDarkMode}
-            />
-            <StatCard 
-                title="Money" 
-                value={analytics?.highSpendDays} 
-                sub="High spend days (>5k)"
-                icon={<FiDollarSign size={20}/>}
-                bgClass="bg-emerald-100 dark:bg-emerald-900/40"
-                textClass="text-emerald-600 dark:text-emerald-400"
-                isDarkMode={isDarkMode}
-            />
-             <StatCard 
-                title="Activity" 
-                value={analytics?.stepsAvg > 0 ? `${(analytics?.stepsAvg/1000).toFixed(1)}k` : '-'} 
-                sub="Avg Daily Steps"
-                icon={<FiActivity size={20}/>}
-                bgClass="bg-rose-100 dark:bg-rose-900/40"
-                textClass="text-rose-600 dark:text-rose-400"
-                isDarkMode={isDarkMode}
-            />
-             <StatCard 
-                title="Habits" 
-                value={`${analytics?.completionPercentage}%`} 
-                sub="Log Consistency"
-                icon={<FiCheckSquare size={20}/>}
-                bgClass="bg-blue-100 dark:bg-blue-900/40"
-                textClass="text-blue-600 dark:text-blue-400"
-                isDarkMode={isDarkMode}
-            />
-        </div>
-
-        {/* 4. Reflections (Read-onlyish view) */}
+        {/* 6. Reflections Section (Redesigned) */}
         <div>
             <div className="flex justify-between items-center mb-6 px-2">
-                <h3 className="font-serif font-bold text-lg">Monthly Reflections</h3>
-                <button onClick={() => handleAddBlock('text')} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 transition-colors"><FiPlus/></button>
+                <h3 className={`font-serif font-bold text-xl ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Monthly Notes</h3>
+                <button onClick={() => handleAddBlock('text')} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-900'}`}><FiPlus/></button>
             </div>
             <div className="flex flex-col gap-4">
                 {blocks.map((block, i) => (
                     <div 
                         key={block.id}
-                        className={`p-6 rounded-[2rem] border hover:border-indigo-300 transition-all ${isDarkMode ? 'bg-[#1C1C1E] border-gray-800' : 'bg-white border-gray-100'}`}
+                        className={`p-6 rounded-[2rem] border transition-all ${isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-100 text-gray-800'}`}
                     >
                         <div className="flex items-center gap-3 mb-3">
                              {getBlockIcon(block.type)}
-                             <h4 className="font-bold">{block.title}</h4>
-                             <div className="ml-auto">
-                                 <button onClick={() => setEditingBlockId(block.id)} className="p-2 rounded-md text-sm text-indigo-600 hover:bg-indigo-50">Edit</button>
+                             <h4 className={`font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>{block.title}</h4>
+                             <div className="ml-auto flex gap-2">
+                                <button onClick={() => setEditingBlockId(block.id)} className="p-2 rounded-md text-sm text-indigo-500 font-bold hover:bg-indigo-50 dark:hover:bg-indigo-900/30">Edit</button>
                              </div>
                         </div>
 
                         {editingBlockId === block.id ? (
-                          <div className="pl-0 text-sm opacity-100">
-                              <div className={`px-4 py-3 mb-4 border-b ${isDarkMode ? 'border-gray-800' : 'border-gray-100'} flex items-center gap-3`}> 
-                                  <button onClick={() => setEditingBlockId(null)} className="p-2 rounded-full bg-gray-100 dark:bg-gray-800"><FiArrowLeft/></button>
-                                  <div className="flex-1 font-bold">{block.title}</div>
+                          <div className="pl-0 text-sm opacity-100 mt-4">
+                              <div className={`px-4 py-3 mb-4 border-b flex items-center gap-3 ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}> 
+                                  <button onClick={() => setEditingBlockId(null)} className={`p-2 rounded-full ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}><FiArrowLeft/></button>
+                                  <div className="flex-1 font-bold">Editing...</div>
                                   <div className="flex items-center gap-2">
                                       {lastSaved && <span className="text-xs text-green-500 font-bold">Saved</span>}
-                                      <button onClick={() => handleDeleteBlock(block.id)} className="text-red-400"><FiTrash2/></button>
+                                      <button onClick={() => handleDeleteBlock(block.id)} className="text-red-400 p-2"><FiTrash2/></button>
                                   </div>
                               </div>
                               <MonthlyJournalBlock 
@@ -739,7 +802,7 @@ const Month = () => {
                               />
                           </div>
                         ) : (
-                          <div className="pl-8 text-sm opacity-60">
+                          <div className={`pl-8 text-sm ${isDarkMode ? 'opacity-80' : 'opacity-60'}`}>
                                {getBlockSummary(block)}
                           </div>
                         )}
@@ -752,7 +815,7 @@ const Month = () => {
   );
 
   return (
-    <div className={`min-h-screen font-sans p-6 ${isDarkMode ? 'bg-[#000]' : 'bg-[#FDFBF7] text-[#2D2D2D]'} transition-colors duration-300`}>
+    <div className={`min-h-screen font-sans p-6 ${isDarkMode ? 'bg-[#121212]' : 'bg-[#FDFBF7] text-[#2D2D2D]'} transition-colors duration-300`}>
          {loading ? (
              <div className="h-screen flex items-center justify-center">
                  <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
