@@ -171,6 +171,21 @@ const Profile = () => {
                          <div className="space-y-3">
                             <h3 className={`text-xs font-bold uppercase tracking-widest px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>App Settings</h3>
                             <div className={`rounded-3xl overflow-hidden ${isDarkMode ? 'bg-gray-900' : 'bg-white shadow-sm shadow-indigo-100'}`}>
+                                <button onClick={toggleTheme} className="w-full p-4 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-gray-800 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
+                                            {isDarkMode ? <FiSun size={18} /> : <FiMoon size={18} />}
+                                        </div>
+                                        <div className="text-left">
+                                            <div className="font-bold text-sm">Appearance</div>
+                                            <div className="text-[10px] opacity-60 font-medium">{isDarkMode ? 'Dark Mode' : 'Light Mode'}</div>
+                                        </div>
+                                    </div>
+                                    <div className={`w-10 h-5 rounded-full relative transition-colors ${isDarkMode ? 'bg-indigo-500' : 'bg-gray-200'}`}>
+                                        <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${isDarkMode ? 'translate-x-5' : ''}`} />
+                                    </div>
+                                </button>
+                                <div className="h-[1px] bg-gray-100 dark:bg-gray-800 mx-16"></div>
                                 <button className="w-full p-4 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                                     <div className="flex items-center gap-4">
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-gray-800 text-pink-400' : 'bg-pink-50 text-pink-600'}`}>

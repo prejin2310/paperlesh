@@ -7,17 +7,30 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children }) => {
-  // Always enforce light mode
-  const isDarkMode = false;
-  
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check localStorage only - Ignore system preference to prevent auto-dark mode
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme) {
+        return savedTheme === 'dark';
+      }
+    }
+    return false; // Default to light
+  });
+
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('dark');
-    localStorage.removeItem('theme');
-  }, []);
+    if (isDarkMode) {
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
 
   const toggleTheme = () => {
-    // No-op
+    setIsDarkMode(prev => !prev);
   };
 
   return (

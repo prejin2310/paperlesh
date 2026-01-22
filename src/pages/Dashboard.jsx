@@ -344,7 +344,7 @@ const Dashboard = () => {
     return (
         <div className="mb-6 mt-4 relative z-10">
             <div className="flex justify-between items-end mb-4 px-1">
-               <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">This Week</h3>
+               <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>This Week</h3>
                <button 
                   onClick={() => setIsCalendarOpen(true)}
                   className="flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full transition-all shadow-sm backdrop-blur-md bg-white/50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
@@ -410,10 +410,10 @@ const Dashboard = () => {
       return (
           <div className="flex justify-between items-start mb-8 pt-6 relative z-10">
               <div>
-                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white transition-colors">
+                  <h1 className={`text-3xl font-bold transition-colors ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       Hi, {name}
                   </h1>
-                  <p className="text-sm font-medium mt-1 text-gray-500 dark:text-gray-400 transition-colors">
+                  <p className={`text-sm font-medium mt-1 transition-colors ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                       {format(new Date(), 'EEEE, MMM d')}
                   </p>
                   
@@ -428,8 +428,16 @@ const Dashboard = () => {
               </div>
 
               <div className="flex items-center gap-1 backdrop-blur-md p-1 rounded-full border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 shadow-sm transition-all hover:scale-105 duration-300">
-                   {/* Theme toggle removed */}
-                   
+                   <button 
+                        onClick={toggleTheme}
+                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        aria-label="Toggle Theme"
+                    >
+                        {isDarkMode ? <FiMoon size={18} /> : <FiSun size={18} />}
+                    </button>
+
+                   <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 opacity-50"></div>
+
                    <button 
                         onClick={() => setIsNotificationsOpen(true)}
                         className="relative p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -551,7 +559,7 @@ const Dashboard = () => {
       {/* 3. My Journal Section - DYNAMIC STACK */}
       <div className="mt-8">
           <div className="flex justify-between items-end mb-4">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">My Journal</h2>
+              <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>My Journal</h2>
           </div>
 
           <div className="relative w-full h-[320px] md:h-[300px] perspective-1000">
@@ -581,7 +589,7 @@ const Dashboard = () => {
                             stack.push({
                                 id: 'missed',
                                 type: 'missed',
-                                bg: 'bg-red-50 dark:bg-red-900/20',
+                                bg: isDarkMode ? 'bg-red-900/20' : 'bg-red-50',
                                 zIndex: 50
                             });
                         }
@@ -591,7 +599,7 @@ const Dashboard = () => {
                              stack.push({
                                 id: 'future',
                                 type: 'future',
-                                bg: 'bg-indigo-50 dark:bg-indigo-900/20',
+                                bg: isDarkMode ? 'bg-indigo-900/20' : 'bg-indigo-50',
                                 zIndex: 50
                             });
                         }
@@ -715,14 +723,14 @@ const Dashboard = () => {
                                     >
                                          <div className="relative z-10 flex flex-col justify-between h-full pointer-events-none">
                                             <div>
-                                                <h3 className="text-3xl font-black text-gray-900 dark:text-white mb-2 leading-tight">
+                                                <h3 className={`text-3xl font-black mb-2 leading-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                                      {timeOfDay === 'morning' ? "Let's start your day" : "How is your day?"}
                                                 </h3>
-                                                <p className="text-gray-800/80 dark:text-gray-100/90 font-bold text-lg max-w-[90%] leading-tight mb-1">
+                                                <p className={`font-bold text-lg max-w-[90%] leading-tight mb-1 ${isDarkMode ? 'text-gray-100' : 'text-gray-800/80'}`}>
                                                      {timeOfDay === 'morning' ? "Begin with mindful morning reflections." : "Capture your moments, habits & mood."}
                                                 </p>
                                                 {timeOfDay !== 'morning' && (
-                                                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300 opacity-90">
+                                                    <p className={`text-sm font-medium opacity-90 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                                                         Enter your today journal
                                                     </p>
                                                 )}
@@ -734,7 +742,7 @@ const Dashboard = () => {
                                                         e.stopPropagation();
                                                         setIsModalOpen(true);
                                                     }}
-                                                    className="px-4 py-2 bg-black/10 dark:bg-white/20 backdrop-blur-sm rounded-full text-sm font-bold text-gray-900 dark:text-white hover:bg-black/20 dark:hover:bg-white/30 transition-colors"
+                                                    className={`px-4 py-2 backdrop-blur-sm rounded-full text-sm font-bold transition-colors ${isDarkMode ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-black/10 text-gray-900 hover:bg-black/20'}`}
                                                 >
                                                     Tap to Log
                                                 </button>
@@ -770,14 +778,14 @@ const Dashboard = () => {
                                             // Make whole card clickable
                                             setIsModalOpen(true); 
                                         }}
-                                        className={`${card.bg} ${baseStyle} p-8 text-red-900 dark:text-red-50 overflow-hidden cursor-pointer group`}
+                                        className={`${card.bg} ${baseStyle} p-8 overflow-hidden cursor-pointer group ${isDarkMode ? 'text-red-50' : 'text-red-900'}`}
                                    >
                                         <div className="relative z-10 flex flex-col justify-between h-full pointer-events-none">
                                            <div>
-                                               <h3 className="text-3xl font-black text-gray-900 dark:text-white mb-3 leading-tight">
+                                               <h3 className={`text-3xl font-black mb-3 leading-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                                     You missed a log
                                                </h3>
-                                               <p className="text-gray-800/80 dark:text-gray-100/90 font-medium text-lg max-w-[80%]">
+                                               <p className={`font-medium text-lg max-w-[80%] ${isDarkMode ? 'text-gray-100/90' : 'text-gray-800/80'}`}>
                                                     Remember the moment and add it here...
                                                </p>
                                            </div>
@@ -785,7 +793,7 @@ const Dashboard = () => {
                                            <div className="flex items-center gap-2 pointer-events-auto">
                                                <button 
                                                    onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
-                                                   className="px-6 py-3 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-500 text-white rounded-full text-sm font-bold shadow-lg shadow-red-200 dark:shadow-none transition-all flex items-center gap-2"
+                                                   className={`px-6 py-3 text-white rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isDarkMode ? 'bg-red-600 hover:bg-red-500 shadow-none' : 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-200'}`}
                                                >
                                                    <FiPlus size={16} />
                                                    Add Log
@@ -824,13 +832,13 @@ const Dashboard = () => {
                                 );
                             } else if (card.type === 'future') {
                                  content = (
-                                   <div className={`${card.bg} ${baseStyle} p-8 text-indigo-900 dark:text-indigo-50 overflow-hidden`}>
+                                   <div className={`${card.bg} ${baseStyle} p-8 overflow-hidden ${isDarkMode ? 'text-indigo-50' : 'text-indigo-900'}`}>
                                         <div className="relative z-10 flex flex-col justify-between h-full">
                                            <div>
-                                               <h3 className="text-3xl font-black text-gray-900 dark:text-white mb-3 leading-tight">
+                                               <h3 className={`text-3xl font-black mb-3 leading-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                                     The Future Awaits
                                                </h3>
-                                               <p className="text-gray-800/80 dark:text-gray-100/90 font-medium text-lg max-w-[80%]">
+                                               <p className={`font-medium text-lg max-w-[80%] ${isDarkMode ? 'text-gray-100/90' : 'text-gray-800/80'}`}>
                                                     "The best way to predict the future is to create it."
                                                </p>
                                            </div>
@@ -838,7 +846,7 @@ const Dashboard = () => {
                                            <div className="flex items-center gap-2">
                                                <button 
                                                    onClick={() => setSelectedDate(todayStr)}
-                                                   className="px-6 py-3 bg-white/50 hover:bg-white dark:bg-white/10 dark:hover:bg-white/20 backdrop-blur-md text-indigo-600 dark:text-indigo-300 rounded-full text-sm font-bold transition-all flex items-center gap-2"
+                                                   className={`px-6 py-3 backdrop-blur-md rounded-full text-sm font-bold transition-all flex items-center gap-2 ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-indigo-300' : 'bg-white/50 hover:bg-white text-indigo-600'}`}
                                                >
                                                    <FiChevronLeft size={16} />
                                                    Back to Today
@@ -895,7 +903,7 @@ const Dashboard = () => {
                                         <div className="px-6 pt-6 pb-2 flex justify-between items-center">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-1.5 h-6 bg-amber-400 rounded-full"></div>
-                                                <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100 tracking-tight">Daily Insight</h3>
+                                                <h3 className="font-bold text-lg text-gray-800 dark:text-white tracking-tight">Daily Insight</h3>
                                             </div>
                                             <div className="flex gap-2">
                                                 <button 
@@ -1070,7 +1078,7 @@ const Dashboard = () => {
        {/* 4. Quick Journal */}
        <div className="mt-8">
           <div className="flex justify-between items-end mb-4">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Quick Daily</h2>
+              <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Quick Daily</h2>
               <button 
                 onClick={() => setIsQuickManagerOpen(true)}
                 className="text-sm text-indigo-500 font-bold hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors bg-indigo-50 dark:bg-indigo-900/20 px-3 py-1 rounded-full"
@@ -1083,13 +1091,13 @@ const Dashboard = () => {
                {quickLinks.map((link) => {
                    // Dynamic Colors
                    const colors = {
-                       rose: 'bg-rose-100 dark:bg-rose-900/30 text-rose-100',
-                       indigo: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-100',
-                       emerald: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-100',
-                       orange: 'bg-orange-100 dark:bg-orange-900/30 text-orange-100',
-                       blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-100',
-                       yellow: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-100',
-                       pink: 'bg-pink-100 dark:bg-pink-900/50 text-pink-100',
+                       rose: isDarkMode ? 'bg-rose-900/60 text-rose-100 border border-rose-800' : 'bg-rose-50 text-rose-900 border border-rose-100',
+                       indigo: isDarkMode ? 'bg-indigo-900/60 text-indigo-100 border border-indigo-800' : 'bg-indigo-50 text-indigo-900 border border-indigo-100',
+                       emerald: isDarkMode ? 'bg-emerald-900/60 text-emerald-100 border border-emerald-800' : 'bg-emerald-50 text-emerald-900 border border-emerald-100',
+                       orange: isDarkMode ? 'bg-orange-900/60 text-orange-100 border border-orange-800' : 'bg-orange-50 text-orange-900 border border-orange-100',
+                       blue: isDarkMode ? 'bg-blue-900/60 text-blue-100 border border-blue-800' : 'bg-blue-50 text-blue-900 border border-blue-100',
+                       yellow: isDarkMode ? 'bg-yellow-900/60 text-yellow-100 border border-yellow-800' : 'bg-yellow-50 text-yellow-900 border border-yellow-100',
+                       pink: isDarkMode ? 'bg-pink-900/60 text-pink-100 border border-pink-800' : 'bg-pink-50 text-pink-900 border border-pink-100',
                    };
                    const bgClass = colors[link.color] || colors.rose;
                    // const textClass = `text-${link.color}-500`; // Simplify text color for badge
@@ -1106,18 +1114,18 @@ const Dashboard = () => {
                             <div className="flex items-center gap-2 mb-3">
                                 <span className="text-2xl">{link.emoji}</span>
                             </div>
-                            <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100 leading-tight mb-1">
+                            <h3 className={`font-bold text-lg leading-tight mb-1 ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
                                 {link.title}
                             </h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium line-clamp-2">
+                            <p className={`text-xs font-medium line-clamp-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                                 {link.subtitle}
                             </p>
                         </div>
                         
                         <div className="relative z-10 flex justify-between items-center text-[10px] font-bold">
                             <span className="text-gray-400 uppercase tracking-wider">Quick Access</span>
-                            <div className={`w-8 h-8 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform`}>
-                                <FiChevronRight size={14} className="text-gray-900 dark:text-white" />
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
+                                <FiChevronRight size={14} className="" />
                             </div>
                         </div>
 

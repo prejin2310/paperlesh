@@ -14,14 +14,28 @@ const Landing = () => {
     const [isDarkMode, setIsDarkMode] = useState(false);
 
     useEffect(() => {
-        // Enforce light mode on landing
-        setIsDarkMode(false);
-        document.documentElement.classList.remove('dark');
-        localStorage.removeItem('theme');
+        const storedTheme = localStorage.getItem('theme');
+        if (storedTheme === 'dark') {
+            setIsDarkMode(true);
+            document.documentElement.classList.add('dark');
+        } else {
+            setIsDarkMode(false);
+            document.documentElement.classList.remove('dark');
+        }
     }, []);
 
     const toggleTheme = () => {
-       // Disabled
+        setIsDarkMode((prev) => {
+            const newMode = !prev;
+            if (newMode) {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            }
+            return newMode;
+        });
     };
 
     useEffect(() => {
@@ -83,7 +97,12 @@ const Landing = () => {
                          <img src="/lan.png" alt="MyJournle" className="h-10 w-auto" />
                     </div>
                     <div className="flex items-center gap-4">
-                        {/* Theme Toggle Removed */}
+                        <button 
+                            onClick={toggleTheme}
+                            className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-200 text-slate-600'}`}
+                        >
+                            {isDarkMode ? <FiSun size={20} /> : <FiMoon size={20} />}
+                        </button>
                         <Link to="/login" className={`text-sm font-bold transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-500 hover:text-black'}`}>Log In</Link>
                         <Link to="/onboarding" className="hidden sm:inline-flex px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-full hover:bg-indigo-700 hover:scale-105 hover:shadow-xl hover:shadow-indigo-500/20 transition-all">
                             Start Free
